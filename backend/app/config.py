@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     SMTP_USER: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
     EMAIL_FROM: Optional[str] = None
+    EMAIL_FROM_NAME: str = "diRead"
+
+    # Password Reset Settings
+    PASSWORD_RESET_EXPIRE_MINUTES: int = 30
+    FRONTEND_URL: str = "diread://reset-password"  # Deep link for mobile app
 
     # CORS Settings
     CORS_ORIGINS: str = "*"

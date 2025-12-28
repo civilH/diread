@@ -6,6 +6,7 @@ import 'presentation/providers/auth_provider.dart';
 import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/auth/register_screen.dart';
 import 'presentation/screens/auth/forgot_password_screen.dart';
+import 'presentation/screens/auth/reset_password_screen.dart';
 import 'presentation/screens/library/library_screen.dart';
 import 'presentation/screens/library/book_detail_screen.dart';
 import 'presentation/screens/reader/reader_screen.dart';
@@ -40,7 +41,8 @@ class _DiReadAppState extends State<DiReadApp> {
         final isAuthenticated = authProvider.isAuthenticated;
         final isAuthRoute = state.matchedLocation == '/login' ||
             state.matchedLocation == '/register' ||
-            state.matchedLocation == '/forgot-password';
+            state.matchedLocation == '/forgot-password' ||
+            state.matchedLocation.startsWith('/reset-password');
 
         if (!isAuthenticated && !isAuthRoute) {
           return '/login';
@@ -68,6 +70,14 @@ class _DiReadAppState extends State<DiReadApp> {
           path: '/forgot-password',
           name: 'forgot-password',
           builder: (context, state) => const ForgotPasswordScreen(),
+        ),
+        GoRoute(
+          path: '/reset-password',
+          name: 'reset-password',
+          builder: (context, state) {
+            final token = state.uri.queryParameters['token'];
+            return ResetPasswordScreen(token: token);
+          },
         ),
 
         // Main App Routes

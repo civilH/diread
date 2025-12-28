@@ -10,6 +10,7 @@ from fastapi import HTTPException, status
 from ..config import settings
 from ..models.user import User
 from ..models.refresh_token import RefreshToken
+from ..models.password_reset import PasswordResetToken
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -162,4 +163,132 @@ class AuthService:
 
         for rt in refresh_tokens:
             await db.delete(rt)
+        await db.commit()
+
+    # Password Reset Methods
+
+    @staticmethod
+    def create_password_reset_token() -> tuple[str, str]:
+        """
+        Create a password reset token.
+
+        Returns:
+            Tuple of (plain_token, hashed_token)
+        """
+        token = str(uuid.uuid4())
+        token_hash = pwd_context.hash(token)
+        return token, token_hash
+
+    @staticmethod
+    async def store_password_reset_token(
+        db: AsyncSession,
+        user_id: str,
+        token_hash: str,
+    ) -> PasswordResetToken:
+        """Store a password reset token in the database."""
+        # Invalidate any existing reset tokens for this user
+        await AuthService.invalidate_password_reset_tokens(db, user_id)
+
+        expires_at = datetime.utcnow() + timedelta(
+            minutes=settings.PASSWORD_RESET_EXPIRE_MINUTES
+        )
+        reset_token = PasswordResetToken(
+            user_id=user_id,
+            token_hash=token_hash,
+            expires_at=expires_at,
+        )
+        db.add(reset_token)
+        await db.commit()
+        return reset_token
+
+    @staticmethod
+    async def verify_password_reset_token(
+        db: AsyncSession,
+        token: str,
+    ) -> Optional[User]:
+        """
+        Verify a password reset token and return the associated user.
+
+        Args:
+            db: Database session
+            token: Plain text reset token
+
+        Returns:
+            User if token is valid, None otherwise
+        """
+        # Get all valid (non-expired, unused) reset tokens
+        result = await db.execute(
+            select(PasswordResetToken).where(
+                PasswordResetToken.expires_at > datetime.utcnow(),
+                PasswordResetToken.used_at.is_(None),
+            )
+        )
+        reset_tokens = result.scalars().all()
+
+        # Find matching token
+        for rt in reset_tokens:
+            if pwd_context.verify(token, rt.token_hash):
+                # Get the user
+                user = await AuthService.get_user_by_id(db, str(rt.user_id))
+                return user
+
+        return None
+
+    @staticmethod
+    async def use_password_reset_token(
+        db: AsyncSession,
+        token: str,
+    ) -> Optional[PasswordResetToken]:
+        """
+        Mark a password reset token as used.
+
+        Args:
+            db: Database session
+            token: Plain text reset token
+
+        Returns:
+            The used token record, or None if not found
+        """
+        result = await db.execute(
+            select(PasswordResetToken).where(
+                PasswordResetToken.expires_at > datetime.utcnow(),
+                PasswordResetToken.used_at.is_(None),
+            )
+        )
+        reset_tokens = result.scalars().all()
+
+        for rt in reset_tokens:
+            if pwd_context.verify(token, rt.token_hash):
+                rt.used_at = datetime.utcnow()
+                await db.commit()
+                return rt
+
+        return None
+
+    @staticmethod
+    async def invalidate_password_reset_tokens(
+        db: AsyncSession,
+        user_id: str,
+    ) -> None:
+        """Invalidate all password reset tokens for a user."""
+        result = await db.execute(
+            select(PasswordResetToken).where(
+                PasswordResetToken.user_id == user_id,
+                PasswordResetToken.used_at.is_(None),
+            )
+        )
+        tokens = result.scalars().all()
+
+        for token in tokens:
+            await db.delete(token)
+        await db.commit()
+
+    @staticmethod
+    async def update_password(
+        db: AsyncSession,
+        user: User,
+        new_password: str,
+    ) -> None:
+        """Update a user's password."""
+        user.password_hash = AuthService.get_password_hash(new_password)
         await db.commit()

@@ -146,6 +146,35 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> resetPassword({
+    required String token,
+    required String password,
+  }) async {
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _authRepository.resetPassword(
+        token: token,
+        password: password,
+      );
+      _status = AuthStatus.unauthenticated;
+      notifyListeners();
+      return true;
+    } on ValidationException catch (e) {
+      _errorMessage = e.message;
+      _status = AuthStatus.error;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Failed to reset password. The link may have expired.';
+      _status = AuthStatus.error;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> updateProfile({String? name}) async {
     try {
       _user = await _authRepository.updateProfile(name: name);

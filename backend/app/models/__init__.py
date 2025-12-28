@@ -4,6 +4,7 @@ from .progress import ReadingProgress
 from .bookmark import Bookmark
 from .highlight import Highlight
 from .refresh_token import RefreshToken
+from .password_reset import PasswordResetToken
 
 __all__ = [
     "User",
@@ -12,4 +13,5 @@ __all__ = [
     "Bookmark",
     "Highlight",
     "RefreshToken",
+    "PasswordResetToken",
 ]

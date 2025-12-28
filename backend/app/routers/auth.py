@@ -1,10 +1,14 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..schemas.auth import UserCreate, UserLogin, Token, TokenRefresh
+from ..schemas.auth import UserCreate, UserLogin, Token, TokenRefresh, PasswordResetRequest, PasswordReset
 from ..schemas.user import UserResponse
 from ..services.auth_service import AuthService
+from ..services.email_service import EmailService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -147,53 +151,82 @@ async def logout(
     return None
 
 
-@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/forgot-password", status_code=status.HTTP_200_OK)
 async def forgot_password(
-    email_data: dict,
+    request: PasswordResetRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Request password reset email."""
-    email = email_data.get("email")
-    if not email:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email is required",
+    """
+    Request password reset email.
+
+    Always returns success to prevent email enumeration attacks.
+    """
+    # Check if user exists
+    user = await AuthService.get_user_by_email(db, request.email)
+
+    if user:
+        # Generate reset token
+        token, token_hash = AuthService.create_password_reset_token()
+
+        # Store token in database
+        await AuthService.store_password_reset_token(
+            db,
+            str(user.id),
+            token_hash,
         )
 
-    # Check if user exists
-    user = await AuthService.get_user_by_email(db, email)
-    if not user:
-        # Don't reveal if user exists
-        return None
+        # Send reset email
+        user_name = user.name or user.email.split("@")[0]
+        email_sent = EmailService.send_password_reset_email(
+            to_email=user.email,
+            reset_token=token,
+            user_name=user_name,
+        )
 
-    # TODO: Implement email sending
-    # For now, just return success
-    return None
+        if not email_sent:
+            logger.error(f"Failed to send password reset email to {user.email}")
+    else:
+        logger.info(f"Password reset requested for non-existent email: {request.email}")
+
+    # Always return success to prevent email enumeration
+    return {
+        "message": "If the email exists, a password reset link has been sent."
+    }
 
 
-@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/reset-password", status_code=status.HTTP_200_OK)
 async def reset_password(
-    reset_data: dict,
+    request: PasswordReset,
     db: AsyncSession = Depends(get_db),
 ):
     """Reset password with token."""
-    token = reset_data.get("token")
-    password = reset_data.get("password")
-
-    if not token or not password:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Token and password are required",
-        )
-
-    if len(password) < 8:
+    # Validate password length
+    if len(request.password) < 8:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password must be at least 8 characters",
         )
 
-    # TODO: Implement password reset token verification
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Password reset not implemented yet",
-    )
+    # Verify token and get user
+    user = await AuthService.verify_password_reset_token(db, request.token)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token",
+        )
+
+    # Mark token as used
+    await AuthService.use_password_reset_token(db, request.token)
+
+    # Update password
+    await AuthService.update_password(db, user, request.password)
+
+    # Invalidate all refresh tokens for security
+    await AuthService.invalidate_all_refresh_tokens(db, str(user.id))
+
+    logger.info(f"Password reset successful for user: {user.email}")
+
+    return {
+        "message": "Password has been reset successfully. Please log in with your new password."
+    }
