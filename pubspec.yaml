@@ -39,9 +39,13 @@ dependencies:
   # PDF Reader
   syncfusion_flutter_pdfviewer: ^23.1.36
 
-  # EPUB Reader (disabled for now due to compatibility issues)
-  # vocsy_epub_viewer: ^2.0.0
+  # EPUB Reader
+  flutter_widget_from_html_core: ^0.14.11
   html: ^0.15.4
+  scrollable_positioned_list: ^0.3.8
+  archive: ^3.4.10
+  xml: ^6.3.0
+  path: ^1.8.3
 
   # Image Processing
   image: ^4.1.3

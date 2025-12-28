@@ -205,6 +205,11 @@ class ReaderProvider with ChangeNotifier {
     _debouncedSaveProgress();
   }
 
+  void updateProgress(double percent) {
+    // Called by EPUB reader to update progress percentage directly
+    // Progress is saved via _debouncedSaveProgress when page/cfi changes
+  }
+
   DateTime? _lastSaveTime;
 
   void _debouncedSaveProgress() {

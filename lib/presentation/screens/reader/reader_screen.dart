@@ -249,7 +249,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
                       file: kIsWeb ? null : reader.bookFile,
                       bytes: kIsWeb ? reader.bookBytes : null,
                     )
-                  : EpubReaderView(file: reader.bookFile!),
+                  : EpubReaderView(
+                      file: kIsWeb ? null : reader.bookFile,
+                      bytes: kIsWeb ? reader.bookBytes : null,
+                    ),
             ),
 
             // Top Bar
