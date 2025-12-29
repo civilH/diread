@@ -50,7 +50,7 @@ class BookService:
 
         try:
             if file_type == BookType.PDF:
-                from PyPDF2 import PdfReader
+                from pypdf import PdfReader
                 pdf = PdfReader(io.BytesIO(file_content))
                 info = pdf.metadata
                 if info:

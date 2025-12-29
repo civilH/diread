@@ -1,7 +1,8 @@
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -50,7 +51,7 @@ class AuthService:
             if user_id is None or token_type != "access":
                 return None
             return user_id
-        except JWTError:
+        except InvalidTokenError:
             return None
 
     @staticmethod
