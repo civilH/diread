@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -22,6 +23,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadCacheSize() async {
+    if (kIsWeb) {
+      setState(() => _cacheSize = 0);
+      return;
+    }
     final size = await FileUtils.getCacheSize();
     setState(() {
       _cacheSize = size;
@@ -29,6 +34,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _clearCache() async {
+    if (kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cache not available on web')),
+      );
+      return;
+    }
     await FileUtils.clearCache();
     await _loadCacheSize();
     if (mounted) {

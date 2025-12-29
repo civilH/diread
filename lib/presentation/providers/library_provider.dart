@@ -81,16 +81,20 @@ class LibraryProvider with ChangeNotifier {
 
     try {
       _books = await _bookRepository.getBooks();
-      // Cache books locally
-      for (final book in _books) {
-        await _dbHelper.cacheBook(book);
+      // Cache books locally (skip on web - no SQLite support)
+      if (!kIsWeb) {
+        for (final book in _books) {
+          await _dbHelper.cacheBook(book);
+        }
       }
       _status = LibraryStatus.loaded;
     } catch (e) {
-      // Try to load from cache
-      _books = await _dbHelper.getCachedBooks();
+      // Try to load from cache (skip on web)
+      if (!kIsWeb) {
+        _books = await _dbHelper.getCachedBooks();
+      }
       if (_books.isEmpty) {
-        _errorMessage = 'Failed to load books';
+        _errorMessage = 'Failed to load books: $e';
         _status = LibraryStatus.error;
       } else {
         _status = LibraryStatus.loaded;

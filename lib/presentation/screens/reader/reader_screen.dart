@@ -23,11 +23,13 @@ class ReaderScreen extends StatefulWidget {
 class _ReaderScreenState extends State<ReaderScreen> {
   bool _showControls = true;
   bool _isFullScreen = false;
+  ReaderProvider? _readerProvider;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _readerProvider = context.read<ReaderProvider>();
       _loadBook();
     });
   }
@@ -188,7 +190,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   @override
   void dispose() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    context.read<ReaderProvider>().closeBook();
+    _readerProvider?.closeBook(notify: false);
     super.dispose();
   }
 
@@ -199,7 +201,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
       (provider) => provider.status,
     );
 
-    if (status == ReaderStatus.loading) {
+    // Show loading for both initial and loading states
+    if (status == ReaderStatus.initial || status == ReaderStatus.loading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
@@ -229,7 +232,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
     final reader = context.read<ReaderProvider>();
     final book = reader.currentBook;
-    if (book == null || reader.bookFile == null) {
+    // Check for bookFile (native) OR bookBytes (web)
+    final hasBookData = kIsWeb ? reader.bookBytes != null : reader.bookFile != null;
+    if (book == null || !hasBookData) {
       return Scaffold(
         appBar: AppBar(),
         body: const Center(child: Text('Book not found')),
@@ -238,12 +243,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
     return Scaffold(
       backgroundColor: reader.settings.theme.backgroundColor,
-      body: GestureDetector(
-        onTap: _toggleControls,
-        child: Stack(
-          children: [
-            // Reader Content - wrapped in RepaintBoundary
-            RepaintBoundary(
+      body: Stack(
+        children: [
+          // Reader Content - wrapped in GestureDetector for tap to toggle controls
+          GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: _toggleControls,
+            child: RepaintBoundary(
               child: book.fileType == BookType.pdf
                   ? PdfReaderView(
                       file: kIsWeb ? null : reader.bookFile,
@@ -254,26 +260,29 @@ class _ReaderScreenState extends State<ReaderScreen> {
                       bytes: kIsWeb ? reader.bookBytes : null,
                     ),
             ),
+          ),
 
-            // Top Bar
-            if (_showControls)
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: _buildTopBar(context, book),
-              ),
+          // Top Bar
+          if (_showControls)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: _buildTopBar(context, book),
+            ),
 
-            // Bottom Bar
-            if (_showControls)
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: _buildBottomBar(context, reader),
-              ),
-          ],
-        ),
+          // Bottom Bar
+          if (_showControls)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: _buildBottomBar(context, reader),
+            ),
+
+          // Navigation buttons (always visible on sides)
+          _buildNavigationButtons(context, reader),
+        ],
       ),
     );
   }
@@ -345,6 +354,53 @@ class _ReaderScreenState extends State<ReaderScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildNavigationButtons(BuildContext context, ReaderProvider reader) {
+    return Positioned.fill(
+      child: Row(
+        children: [
+          // Previous page button (left side)
+          GestureDetector(
+            onTap: () {
+              if (reader.currentPage > 0) {
+                reader.updatePage(reader.currentPage - 1, fromNavButton: true);
+              }
+            },
+            child: Container(
+              width: 60,
+              color: Colors.transparent,
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.chevron_left,
+                size: 40,
+                color: Colors.white.withOpacity(0.3),
+              ),
+            ),
+          ),
+          // Center area - tap to toggle controls
+          const Expanded(child: SizedBox()),
+          // Next page button (right side)
+          GestureDetector(
+            onTap: () {
+              if (reader.currentPage < reader.totalPages - 1) {
+                reader.updatePage(reader.currentPage + 1, fromNavButton: true);
+              }
+            },
+            child: Container(
+              width: 60,
+              color: Colors.transparent,
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.chevron_right,
+                size: 40,
+                color: Colors.white.withOpacity(0.3),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

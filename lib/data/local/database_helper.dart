@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/reading_progress.dart';
@@ -10,12 +11,21 @@ class DatabaseHelper {
   static const String _dbName = 'diread.db';
   static const int _dbVersion = 1;
 
+  /// Check if database is available (not on web)
+  bool get isAvailable => !kIsWeb;
+
   Future<Database> get database async {
+    if (kIsWeb) {
+      throw UnsupportedError('SQLite is not supported on web platform');
+    }
     _database ??= await _initDatabase();
     return _database!;
   }
 
   Future<Database> _initDatabase() async {
+    if (kIsWeb) {
+      throw UnsupportedError('SQLite is not supported on web platform');
+    }
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, _dbName);
 
@@ -210,6 +220,7 @@ class DatabaseHelper {
 
   // Books Cache Methods
   Future<void> cacheBook(Book book) async {
+    if (kIsWeb) return; // Skip on web
     final db = await database;
     await db.insert(
       'books_cache',
@@ -232,6 +243,7 @@ class DatabaseHelper {
   }
 
   Future<List<Book>> getCachedBooks() async {
+    if (kIsWeb) return []; // Return empty on web
     final db = await database;
     final maps = await db.query('books_cache');
 
@@ -268,12 +280,15 @@ class DatabaseHelper {
 
   // Reading Settings Methods
   Future<Map<String, dynamic>> getReadingSettings() async {
+    if (kIsWeb) return {}; // Return empty on web
     final db = await database;
     final maps = await db.query('reading_settings', limit: 1);
+    if (maps.isEmpty) return {};
     return maps.first;
   }
 
   Future<void> updateReadingSettings(Map<String, dynamic> settings) async {
+    if (kIsWeb) return; // Skip on web
     final db = await database;
     await db.update('reading_settings', settings);
   }

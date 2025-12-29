@@ -22,6 +22,8 @@ class _PdfReaderViewState extends State<PdfReaderView> {
   late PdfViewerController _pdfController;
   final GlobalKey<SfPdfViewerState> _pdfViewerKey = GlobalKey();
   Timer? _pageUpdateDebounce;
+  int _lastKnownPage = 0;
+  bool _isUserScrolling = false;
 
   @override
   void initState() {
@@ -36,6 +38,13 @@ class _PdfReaderViewState extends State<PdfReaderView> {
     super.dispose();
   }
 
+  void _jumpToPage(int page) {
+    if (!_isUserScrolling && _pdfController.pageNumber != page + 1) {
+      _pdfController.jumpToPage(page + 1);
+      _lastKnownPage = page;
+    }
+  }
+
   void _onPageChanged(int pageNumber) {
     // Debounce page updates to reduce rebuilds
     _pageUpdateDebounce?.cancel();
@@ -48,12 +57,27 @@ class _PdfReaderViewState extends State<PdfReaderView> {
 
   @override
   Widget build(BuildContext context) {
-    // Only rebuild when scroll mode changes
+    // Listen to scroll mode and current page for navigation
     final scrollMode = context.select<ReaderProvider, bool>(
       (provider) => provider.settings.scrollMode,
     );
+    final currentPage = context.select<ReaderProvider, int>(
+      (provider) => provider.currentPage,
+    );
+
+    // Jump to page if changed externally (from nav buttons)
+    if (currentPage != _lastKnownPage) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _jumpToPage(currentPage);
+        }
+      });
+    }
+
+    debugPrint('PdfReaderView: kIsWeb=$kIsWeb, bytes=${widget.bytes?.length ?? 0}, file=${widget.file?.path}');
 
     if (kIsWeb && widget.bytes != null) {
+      debugPrint('PdfReaderView: Building web viewer with ${widget.bytes!.length} bytes');
       return _buildViewer(widget.bytes!, null, scrollMode);
     } else if (widget.file != null) {
       return _buildViewer(null, widget.file!, scrollMode);
@@ -71,10 +95,10 @@ class _PdfReaderViewState extends State<PdfReaderView> {
             controller: _pdfController,
             enableDoubleTapZooming: true,
             enableTextSelection: false, // Disable for better performance
-            canShowScrollHead: false,
-            canShowScrollStatus: false,
+            canShowScrollHead: true,
+            canShowScrollStatus: true,
             canShowPaginationDialog: false,
-            pageSpacing: 0,
+            pageSpacing: 4,
             pageLayoutMode: scrollMode
                 ? PdfPageLayoutMode.continuous
                 : PdfPageLayoutMode.single,
@@ -82,10 +106,14 @@ class _PdfReaderViewState extends State<PdfReaderView> {
                 ? PdfScrollDirection.vertical
                 : PdfScrollDirection.horizontal,
             onDocumentLoaded: (details) {
+              debugPrint('PDF loaded: ${details.document.pages.count} pages');
               reader.setTotalPages(details.document.pages.count);
               if (reader.currentPage > 0) {
                 _pdfController.jumpToPage(reader.currentPage + 1);
               }
+            },
+            onDocumentLoadFailed: (details) {
+              debugPrint('PDF load failed: ${details.error}, ${details.description}');
             },
             onPageChanged: (details) => _onPageChanged(details.newPageNumber),
           )

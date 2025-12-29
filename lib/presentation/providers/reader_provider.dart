@@ -148,7 +148,9 @@ class ReaderProvider with ChangeNotifier {
       // Download book - handle web differently
       if (kIsWeb) {
         // On web, download as bytes
+        debugPrint('ReaderProvider: Loading book on web: ${book.title}');
         _bookBytes = await _bookRepository.downloadBookBytes(book);
+        debugPrint('ReaderProvider: Downloaded ${_bookBytes?.length ?? 0} bytes');
       } else {
         // On native platforms, use file system
         if (book.localPath != null && await File(book.localPath!).exists()) {
@@ -192,10 +194,13 @@ class ReaderProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updatePage(int page) async {
+  Future<void> updatePage(int page, {bool fromNavButton = false}) async {
     if (_currentPage == page) return;
     _currentPage = page;
-    // Don't notify - let UI update independently
+    // Notify listeners when from navigation button so PDF viewer can update
+    if (fromNavButton) {
+      notifyListeners();
+    }
     _debouncedSaveProgress();
   }
 
@@ -356,9 +361,10 @@ class ReaderProvider with ChangeNotifier {
     await _dbHelper.updateReadingSettings(_settings.toMap());
   }
 
-  void closeBook() {
+  void closeBook({bool notify = true}) {
     _currentBook = null;
     _bookFile = null;
+    _bookBytes = null; // Reset web book bytes
     _progress = null;
     _bookmarks = [];
     _highlights = [];
@@ -367,6 +373,8 @@ class ReaderProvider with ChangeNotifier {
     _currentCfi = null;
     _tableOfContents = [];
     _status = ReaderStatus.initial;
-    notifyListeners();
+    if (notify) {
+      notifyListeners();
+    }
   }
 }

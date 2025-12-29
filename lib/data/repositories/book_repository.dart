@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/book.dart';
 import '../models/bookmark.dart';
 import '../models/highlight.dart';
@@ -14,6 +15,11 @@ class BookRepository {
   Future<List<Book>> getBooks() async {
     final response = await _apiService.getBooks();
     final books = response.map((json) => Book.fromJson(json)).toList();
+
+    // Skip local file check on web (no file system access)
+    if (kIsWeb) {
+      return books;
+    }
 
     // Check local availability for each book
     final updatedBooks = <Book>[];
@@ -52,6 +58,11 @@ class BookRepository {
     final response = await _apiService.getBook(id);
     final book = Book.fromJson(response);
 
+    // Skip local file check on web
+    if (kIsWeb) {
+      return book;
+    }
+
     final localFile = await FileUtils.getLocalBook(book.id, book.fileExtension);
     final localCover = await FileUtils.getLocalCover(book.id);
 
@@ -64,12 +75,17 @@ class BookRepository {
 
   Future<void> deleteBook(String id) async {
     await _apiService.deleteBook(id);
-    // Also delete local files
-    final book = await getBook(id).catchError((_) => throw Exception('Book not found'));
-    await FileUtils.deleteLocalBook(id, book.fileExtension);
+    // Also delete local files (skip on web)
+    if (!kIsWeb) {
+      final book = await getBook(id).catchError((_) => throw Exception('Book not found'));
+      await FileUtils.deleteLocalBook(id, book.fileExtension);
+    }
   }
 
   Future<File> downloadBook(Book book) async {
+    if (kIsWeb) {
+      throw UnsupportedError('File download not supported on web. Use downloadBookBytes instead.');
+    }
     // Check if already downloaded
     final existingFile = await FileUtils.getLocalBook(book.id, book.fileExtension);
     if (existingFile != null) {
@@ -88,11 +104,13 @@ class BookRepository {
   }
 
   Future<bool> isBookDownloaded(String bookId, String extension) async {
+    if (kIsWeb) return false;
     final file = await FileUtils.getLocalBook(bookId, extension);
     return file != null;
   }
 
   Future<void> deleteLocalBook(String bookId, String extension) async {
+    if (kIsWeb) return;
     await FileUtils.deleteLocalBook(bookId, extension);
   }
 

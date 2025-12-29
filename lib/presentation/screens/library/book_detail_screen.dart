@@ -238,26 +238,28 @@ class BookDetailScreen extends StatelessWidget {
   ) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Book'),
         content: Text(
           'Are you sure you want to delete "${book.title}"? This action cannot be undone.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context);
-              final success = await library.deleteBook(book.id);
-              if (success && context.mounted) {
-                context.pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Book deleted')),
-                );
-              }
+              // Close dialog first
+              Navigator.pop(dialogContext);
+              // Navigate to home/library immediately (before book is removed from list)
+              context.go('/');
+              // Show snackbar
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Book deleted')),
+              );
+              // Delete book in background
+              await library.deleteBook(book.id);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Delete'),
