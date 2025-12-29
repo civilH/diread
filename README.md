@@ -48,7 +48,7 @@
 | Feature | PDF | EPUB | Status |
 |---------|:---:|:----:|:------:|
 | File Upload | ✅ | ✅ | Complete |
-| Reading | ✅ | 🚧 | PDF Complete |
+| Reading | ✅ | ✅ | Complete |
 | Progress Sync | ✅ | ✅ | Complete |
 | Bookmarks | ✅ | ✅ | Complete |
 | Highlights | ✅ | ✅ | Complete |
@@ -59,7 +59,7 @@
 - [x] Secure password hashing (bcrypt + salt)
 - [x] JWT authentication with refresh tokens
 - [x] Per-user private libraries
-- [ ] Password reset via email (coming soon)
+- [x] Password reset via email
 
 ### Library Management
 - [x] Upload PDF and EPUB files (up to 100MB)
@@ -70,11 +70,12 @@
 
 ### Reading Experience
 - [x] High-quality PDF rendering (Syncfusion)
+- [x] EPUB rendering with custom parser
 - [x] Smooth page navigation
 - [x] Reading progress percentage
 - [x] Remember last position
-- [ ] EPUB rendering (coming soon)
-- [ ] Table of contents navigation
+- [x] Table of contents navigation (EPUB)
+- [x] Web platform support
 
 ### Customization
 - [x] Adjustable font size
@@ -263,7 +264,7 @@ class AppConfig {
 | **Pydantic** | Data validation |
 | **PyJWT** | JWT authentication |
 | **bcrypt** | Password hashing |
-| **PyPDF2** | PDF metadata extraction |
+| **pypdf** | PDF metadata extraction |
 | **ebooklib** | EPUB parsing |
 
 ---
@@ -413,15 +414,16 @@ flutter build ios --release
 
 ## Roadmap
 
-### Version 1.1 (Next)
-- [ ] EPUB reader implementation
-- [ ] Password reset via email
-- [ ] Search inside books
+### Version 1.0 ✅ (Current)
+- [x] EPUB reader implementation
+- [x] Password reset via email
+- [x] Web platform support
+- [x] Table of contents (EPUB)
 
-### Version 1.2
+### Version 1.1 (Next)
+- [ ] Search inside books
 - [ ] Font family selection
 - [ ] Sepia reading theme
-- [ ] Table of contents (EPUB)
 
 ### Future
 - [ ] Family sharing features
