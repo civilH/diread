@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/config/theme.dart';
@@ -22,7 +21,6 @@ class ReaderScreen extends StatefulWidget {
 
 class _ReaderScreenState extends State<ReaderScreen> {
   bool _showControls = true;
-  bool _isFullScreen = false;
   ReaderProvider? _readerProvider;
 
   @override
@@ -48,17 +46,6 @@ class _ReaderScreenState extends State<ReaderScreen> {
   void _toggleControls() {
     setState(() {
       _showControls = !_showControls;
-    });
-  }
-
-  void _toggleFullScreen() {
-    setState(() {
-      _isFullScreen = !_isFullScreen;
-      if (_isFullScreen) {
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-      } else {
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      }
     });
   }
 
@@ -170,7 +157,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                       title: Text(item['title'] ?? 'Chapter ${index + 1}'),
                       onTap: () {
                         Navigator.pop(context);
-                        // Navigate to chapter
+                        reader.goToChapter(item);
                       },
                     );
                   },
@@ -187,9 +174,70 @@ class _ReaderScreenState extends State<ReaderScreen> {
     return '${date.day}/${date.month}/${date.year}';
   }
 
+  void _showSearch() {
+    final reader = context.read<ReaderProvider>();
+    final searchController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Search in Book'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: searchController,
+              decoration: const InputDecoration(
+                hintText: 'Enter search text...',
+                prefixIcon: Icon(Icons.search),
+              ),
+              autofocus: true,
+              onSubmitted: (value) {
+                if (value.isNotEmpty) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(this.context).showSnackBar(
+                    SnackBar(
+                      content: Text('Search feature coming soon for: "$value"'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Note: Full text search will be available in a future update.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final query = searchController.text;
+              if (query.isNotEmpty) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(this.context).showSnackBar(
+                  SnackBar(
+                    content: Text('Search feature coming soon for: "$query"'),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+            child: const Text('Search'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _readerProvider?.closeBook(notify: false);
     super.dispose();
   }
@@ -262,7 +310,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
             ),
           ),
 
-          // Top Bar
+          // Navigation buttons - BEFORE top/bottom bars so they don't block them
+          _buildNavigationButtons(context, reader),
+
+          // Top Bar - rendered AFTER nav buttons so it's on top
           if (_showControls)
             Positioned(
               top: 0,
@@ -271,7 +322,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
               child: _buildTopBar(context, book),
             ),
 
-          // Bottom Bar
+          // Bottom Bar - rendered AFTER nav buttons so it's on top
           if (_showControls)
             Positioned(
               bottom: 0,
@@ -279,9 +330,6 @@ class _ReaderScreenState extends State<ReaderScreen> {
               right: 0,
               child: _buildBottomBar(context, reader),
             ),
-
-          // Navigation buttons (always visible on sides)
-          _buildNavigationButtons(context, reader),
         ],
       ),
     );
@@ -306,7 +354,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => context.pop(),
+                onPressed: () => context.go('/library'),
               ),
               Expanded(
                 child: Column(
@@ -335,21 +383,15 @@ class _ReaderScreenState extends State<ReaderScreen> {
                   ],
                 ),
               ),
-              if (book.fileType == BookType.epub)
-                IconButton(
-                  icon: const Icon(Icons.list, color: Colors.white),
-                  onPressed: _showTableOfContents,
-                ),
               IconButton(
-                icon: const Icon(Icons.bookmark_border, color: Colors.white),
-                onPressed: _showBookmarks,
+                icon: const Icon(Icons.list, color: Colors.white),
+                tooltip: 'Table of Contents',
+                onPressed: _showTableOfContents,
               ),
               IconButton(
-                icon: Icon(
-                  _isFullScreen ? Icons.fullscreen_exit : Icons.fullscreen,
-                  color: Colors.white,
-                ),
-                onPressed: _toggleFullScreen,
+                icon: const Icon(Icons.bookmark_border, color: Colors.white),
+                tooltip: 'Bookmarks',
+                onPressed: _showBookmarks,
               ),
             ],
           ),
@@ -420,76 +462,158 @@ class _ReaderScreenState extends State<ReaderScreen> {
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Progress bar
-              Row(
+          child: Consumer<ReaderProvider>(
+            builder: (context, readerState, _) {
+              final currentPage = readerState.currentPage;
+              final totalPages = readerState.totalPages;
+              final isBookmarked = readerState.isBookmarked;
+              final progressPercent = readerState.progressPercent;
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    '${reader.currentPage + 1}',
-                    style: const TextStyle(color: Colors.white),
+                  // Progress bar with slider
+                  Row(
+                    children: [
+                      Text(
+                        '${currentPage + 1}',
+                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                      ),
+                      Expanded(
+                        child: SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            activeTrackColor: Colors.white,
+                            inactiveTrackColor: Colors.white30,
+                            thumbColor: Colors.white,
+                            overlayColor: Colors.white24,
+                          ),
+                          child: Slider(
+                            value: totalPages > 0
+                                ? currentPage.toDouble().clamp(0, (totalPages - 1).toDouble())
+                                : 0,
+                            min: 0,
+                            max: totalPages > 1 ? (totalPages - 1).toDouble() : 1,
+                            onChanged: totalPages > 0
+                                ? (value) {
+                                    readerState.updatePage(value.toInt(), fromNavButton: true);
+                                  }
+                                : null,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '$totalPages',
+                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                      ),
+                    ],
                   ),
-                  Expanded(
-                    child: Slider(
-                      value: reader.currentPage.toDouble(),
-                      min: 0,
-                      max: (reader.totalPages - 1).clamp(0, double.maxFinite).toDouble(),
-                      onChanged: (value) {
-                        reader.updatePage(value.toInt());
-                      },
-                    ),
+
+                  // Controls
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      // Bookmark toggle button
+                      IconButton(
+                        icon: Icon(
+                          isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                          color: isBookmarked ? Colors.red : Colors.white,
+                          size: 28,
+                        ),
+                        tooltip: isBookmarked ? 'Remove Bookmark' : 'Add Bookmark',
+                        onPressed: () {
+                          readerState.toggleBookmark();
+                        },
+                      ),
+                      // Go to page button
+                      IconButton(
+                        icon: const Icon(Icons.format_list_numbered, color: Colors.white, size: 28),
+                        tooltip: 'Go to Page',
+                        onPressed: () => _showGoToPageDialog(context, readerState),
+                      ),
+                      // Settings button (gear icon)
+                      IconButton(
+                        icon: const Icon(Icons.settings, color: Colors.white, size: 28),
+                        tooltip: 'Reading Settings',
+                        onPressed: _showSettings,
+                      ),
+                      // Scroll direction quick toggle
+                      IconButton(
+                        icon: Icon(
+                          readerState.settings.scrollDirection.icon,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                        tooltip: 'Scroll: ${readerState.settings.scrollDirection.displayName}',
+                        onPressed: () {
+                          // Cycle through scroll directions
+                          final directions = ScrollDirection.values;
+                          final currentIndex = directions.indexOf(readerState.settings.scrollDirection);
+                          final nextIndex = (currentIndex + 1) % directions.length;
+                          readerState.updateScrollDirection(directions[nextIndex]);
+                        },
+                      ),
+                    ],
                   ),
+
+                  // Progress text
                   Text(
-                    '${reader.totalPages}',
-                    style: const TextStyle(color: Colors.white),
+                    '${(progressPercent * 100).toStringAsFixed(0)}% completed',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                 ],
-              ),
-
-              // Controls
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      reader.isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                      color: reader.isBookmarked ? Colors.amber : Colors.white,
-                    ),
-                    onPressed: () => reader.toggleBookmark(),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.search, color: Colors.white),
-                    onPressed: () {
-                      // TODO: Implement search
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.text_format, color: Colors.white),
-                    onPressed: _showSettings,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.brightness_6, color: Colors.white),
-                    onPressed: () {
-                      // Cycle through themes
-                      final themes = ReadingTheme.values;
-                      final currentIndex =
-                          themes.indexOf(reader.settings.theme);
-                      final nextIndex = (currentIndex + 1) % themes.length;
-                      reader.updateTheme(themes[nextIndex]);
-                    },
-                  ),
-                ],
-              ),
-
-              // Progress text
-              Text(
-                '${(reader.progressPercent * 100).toStringAsFixed(0)}% completed',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-            ],
+              );
+            },
           ),
         ),
+      ),
+    );
+  }
+
+  void _showGoToPageDialog(BuildContext context, ReaderProvider reader) {
+    final pageController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Go to Page'),
+        content: TextField(
+          controller: pageController,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'Enter page number (1-${reader.totalPages})',
+            border: const OutlineInputBorder(),
+          ),
+          onSubmitted: (value) {
+            final page = int.tryParse(value);
+            if (page != null && page >= 1 && page <= reader.totalPages) {
+              reader.updatePage(page - 1, fromNavButton: true);
+              Navigator.pop(dialogContext);
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final page = int.tryParse(pageController.text);
+              if (page != null && page >= 1 && page <= reader.totalPages) {
+                reader.updatePage(page - 1, fromNavButton: true);
+                Navigator.pop(dialogContext);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Please enter a valid page (1-${reader.totalPages})'),
+                  ),
+                );
+              }
+            },
+            child: const Text('Go'),
+          ),
+        ],
       ),
     );
   }

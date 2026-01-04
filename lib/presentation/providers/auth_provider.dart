@@ -34,12 +34,22 @@ class AuthProvider with ChangeNotifier {
     try {
       final isLoggedIn = await _authRepository.isLoggedIn();
       if (isLoggedIn) {
-        _user = await _authRepository.getCurrentUser();
+        // Token exists, user is authenticated
         _status = AuthStatus.authenticated;
+
+        // Try to get user data, but don't logout if it fails
+        try {
+          _user = await _authRepository.getCurrentUser();
+        } catch (e) {
+          // API call failed (network issue, etc.) but token exists
+          // Keep user authenticated - they can still use offline features
+          debugPrint('Failed to get current user: $e');
+        }
       } else {
         _status = AuthStatus.unauthenticated;
       }
     } catch (e) {
+      // Only if we can't even check the token, set to unauthenticated
       _status = AuthStatus.unauthenticated;
     }
     notifyListeners();

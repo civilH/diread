@@ -20,34 +20,53 @@ class DiReadApp extends StatefulWidget {
 }
 
 class _DiReadAppState extends State<DiReadApp> {
-  late final GoRouter _router;
+  GoRouter? _router;
+  AuthProvider? _authProvider;
+  bool _isRouterInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _router = _createRouter();
 
-    // Check auth status on app start
+    // Get auth provider and check status
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AuthProvider>().checkAuthStatus();
+      _authProvider = context.read<AuthProvider>();
+      _router = _createRouter();
+      _isRouterInitialized = true;
+      _authProvider!.checkAuthStatus();
+      setState(() {}); // Rebuild after router is created
     });
   }
 
   GoRouter _createRouter() {
     return GoRouter(
-      initialLocation: '/login',
+      initialLocation: '/splash',
+      refreshListenable: _authProvider!, // Re-evaluate routes when auth changes
       redirect: (context, state) {
-        final authProvider = context.read<AuthProvider>();
-        final isAuthenticated = authProvider.isAuthenticated;
+        final status = _authProvider!.status;
+        final isAuthenticated = _authProvider!.isAuthenticated;
+        final isSplash = state.matchedLocation == '/splash';
         final isAuthRoute = state.matchedLocation == '/login' ||
             state.matchedLocation == '/register' ||
             state.matchedLocation == '/forgot-password' ||
             state.matchedLocation.startsWith('/reset-password');
 
+        // Still loading - show splash
+        if (status == AuthStatus.initial || status == AuthStatus.loading) {
+          return isSplash ? null : '/splash';
+        }
+
+        // Done loading - redirect from splash
+        if (isSplash) {
+          return isAuthenticated ? '/library' : '/login';
+        }
+
+        // Not authenticated - go to login
         if (!isAuthenticated && !isAuthRoute) {
           return '/login';
         }
 
+        // Authenticated but on auth route - go to library
         if (isAuthenticated && isAuthRoute) {
           return '/library';
         }
@@ -55,6 +74,11 @@ class _DiReadAppState extends State<DiReadApp> {
         return null;
       },
       routes: [
+        // Splash Screen
+        GoRoute(
+          path: '/splash',
+          builder: (context, state) => const _SplashScreen(),
+        ),
         // Auth Routes
         GoRoute(
           path: '/login',
@@ -115,15 +139,68 @@ class _DiReadAppState extends State<DiReadApp> {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
+        // Show loading while router is being initialized
+        if (!_isRouterInitialized) {
+          return MaterialApp(
+            title: 'diRead',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: ThemeMode.system,
+            home: const _SplashScreen(),
+          );
+        }
+
         return MaterialApp.router(
           title: 'diRead',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: ThemeMode.system,
-          routerConfig: _router,
+          routerConfig: _router!,
         );
       },
+    );
+  }
+}
+
+// Simple splash screen
+class _SplashScreen extends StatelessWidget {
+  const _SplashScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // App logo or icon
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(
+                Icons.menu_book,
+                size: 60,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'diRead',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const CircularProgressIndicator(),
+          ],
+        ),
+      ),
     );
   }
 }

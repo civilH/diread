@@ -18,6 +18,7 @@ class ReaderSettings {
   final double margin;
   final ReadingTheme theme;
   final bool scrollMode;
+  final ScrollDirection scrollDirection;
 
   const ReaderSettings({
     this.fontSize = 18.0,
@@ -26,6 +27,7 @@ class ReaderSettings {
     this.margin = 16.0,
     this.theme = ReadingTheme.light,
     this.scrollMode = false,
+    this.scrollDirection = ScrollDirection.horizontal,
   });
 
   ReaderSettings copyWith({
@@ -35,6 +37,7 @@ class ReaderSettings {
     double? margin,
     ReadingTheme? theme,
     bool? scrollMode,
+    ScrollDirection? scrollDirection,
   }) {
     return ReaderSettings(
       fontSize: fontSize ?? this.fontSize,
@@ -43,6 +46,7 @@ class ReaderSettings {
       margin: margin ?? this.margin,
       theme: theme ?? this.theme,
       scrollMode: scrollMode ?? this.scrollMode,
+      scrollDirection: scrollDirection ?? this.scrollDirection,
     );
   }
 
@@ -54,6 +58,7 @@ class ReaderSettings {
       'margin': margin,
       'theme': theme.name,
       'scroll_mode': scrollMode ? 1 : 0,
+      'scroll_direction': scrollDirection.name,
     };
   }
 
@@ -68,6 +73,10 @@ class ReaderSettings {
         orElse: () => ReadingTheme.light,
       ),
       scrollMode: map['scroll_mode'] == 1,
+      scrollDirection: ScrollDirection.values.firstWhere(
+        (e) => e.name == map['scroll_direction'],
+        orElse: () => ScrollDirection.horizontal,
+      ),
     );
   }
 }
@@ -273,6 +282,26 @@ class ReaderProvider with ChangeNotifier {
     await _saveProgress();
   }
 
+  Future<void> goToPage(int page) async {
+    if (page < 0 || page >= _totalPages) return;
+    _currentPage = page;
+    notifyListeners();
+    await _saveProgress();
+  }
+
+  Future<void> goToChapter(Map<String, dynamic> chapter) async {
+    // For EPUB, use CFI if available
+    if (chapter['cfi'] != null) {
+      _currentCfi = chapter['cfi'];
+    }
+    // For PDF or EPUB with page number
+    if (chapter['page'] != null) {
+      _currentPage = chapter['page'] as int;
+    }
+    notifyListeners();
+    await _saveProgress();
+  }
+
   // Highlight Methods
   Future<void> addHighlight({
     required String text,
@@ -353,6 +382,12 @@ class ReaderProvider with ChangeNotifier {
 
   void toggleScrollMode() {
     _settings = _settings.copyWith(scrollMode: !_settings.scrollMode);
+    _saveSettings();
+    notifyListeners();
+  }
+
+  void updateScrollDirection(ScrollDirection direction) {
+    _settings = _settings.copyWith(scrollDirection: direction);
     _saveSettings();
     notifyListeners();
   }

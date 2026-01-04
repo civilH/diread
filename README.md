@@ -5,135 +5,91 @@
 <h1 align="center">diRead</h1>
 
 <p align="center">
-  <strong>A Private Family Digital Reading App</strong><br>
-  Your personal library, beautifully designed. Inspired by Apple Books.
+  <strong>Your Private Family Digital Library</strong><br>
+  Read beautifully. Sync seamlessly. Own your books.
 </p>
 
 <p align="center">
-  <a href="#features">Features</a> •
-  <a href="#screenshots">Screenshots</a> •
-  <a href="#installation">Installation</a> •
-  <a href="#documentation">Documentation</a> •
-  <a href="#roadmap">Roadmap</a>
+  <a href="#-why-diread">Why diRead</a> •
+  <a href="#-features">Features</a> •
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-screenshots">Screenshots</a> •
+  <a href="#-roadmap">Roadmap</a>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Flutter-3.1+-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter">
   <img src="https://img.shields.io/badge/FastAPI-0.100+-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI">
-  <img src="https://img.shields.io/badge/Python-3.9+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
-  <img src="https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite">
+  <img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Web%20%7C%20Desktop-blueviolet?style=for-the-badge" alt="Platform">
 </p>
 
 ---
 
-## About
+## 📖 Why diRead?
 
-**diRead** is a private, family-focused digital reading application that lets you upload, organize, and read your personal e-book collection. Built with Flutter for a beautiful cross-platform experience and FastAPI for a robust backend.
+Ever wanted your own private e-book library that just *works*?
 
-> This is **not** a public marketplace — it's designed for private family use with secure, per-user libraries.
+**diRead** is built for families who:
+- 📚 Have a personal collection of PDFs and EPUBs
+- 🔒 Want their reading data private — no tracking, no ads
+- 📱 Read across multiple devices and want everything synced
+- ✨ Appreciate a clean, distraction-free reading experience
 
-### Why diRead?
-
-- **Privacy First**: Your books, your data. No tracking, no ads.
-- **Cross-Platform**: iOS, Android, macOS, Windows, Linux, and Web.
-- **Offline Support**: Read anywhere, sync when connected.
-- **Beautiful UX**: Clean, distraction-free reading experience.
-
----
-
-## Features
-
-### Core Features
-
-| Feature | PDF | EPUB | Status |
-|---------|:---:|:----:|:------:|
-| File Upload | ✅ | ✅ | Complete |
-| Reading | ✅ | ✅ | Complete |
-| Progress Sync | ✅ | ✅ | Complete |
-| Bookmarks | ✅ | ✅ | Complete |
-| Highlights | ✅ | ✅ | Complete |
-| Notes | ✅ | ✅ | Complete |
-
-### Authentication & Security
-- [x] Email + password registration
-- [x] Secure password hashing (bcrypt + salt)
-- [x] JWT authentication with refresh tokens
-- [x] Per-user private libraries
-- [x] Password reset via email
-
-### Library Management
-- [x] Upload PDF and EPUB files (up to 100MB)
-- [x] Automatic metadata extraction (title, author, cover)
-- [x] Grid and List view toggle
-- [x] Sort by: Recently added, Title, Author
-- [x] Delete and re-download books
-
-### Reading Experience
-- [x] High-quality PDF rendering (Syncfusion)
-- [x] EPUB rendering with custom parser
-- [x] Smooth page navigation
-- [x] Reading progress percentage
-- [x] Remember last position
-- [x] Table of contents navigation (EPUB)
-- [x] Web platform support
-
-### Customization
-- [x] Adjustable font size
-- [x] Line spacing control
-- [x] Margin width settings
-- [x] Light / Dark theme
-- [ ] Sepia theme
-- [ ] Font family selection
-
-### Offline & Sync
-- [x] Local SQLite caching
-- [x] Offline reading support
-- [x] Automatic progress sync
-- [x] Cross-device synchronization
+> Think of it as your personal Apple Books — but you own the server too.
 
 ---
 
-## Screenshots
+## ✨ Features
 
-<p align="center">
-  <em>Screenshots coming soon</em>
-</p>
+### 📱 Beautiful Reading Experience
 
-<!--
-<p align="center">
-  <img src="docs/screenshots/login.png" width="200" alt="Login">
-  <img src="docs/screenshots/library.png" width="200" alt="Library">
-  <img src="docs/screenshots/reader.png" width="200" alt="Reader">
-  <img src="docs/screenshots/settings.png" width="200" alt="Settings">
-</p>
--->
+| Feature | Description |
+|---------|-------------|
+| **PDF & EPUB Support** | High-quality rendering with Syncfusion PDF Viewer |
+| **6 Reading Themes** | Light, Dark, Sepia, Blue, Green, Cream |
+| **3 Scroll Modes** | Horizontal swipe, Vertical swipe, Continuous scroll |
+| **Smart Navigation** | Slider, Go-to-page, Table of Contents |
+| **Bookmarks** | One-tap bookmark with visual feedback (red when active) |
+| **Progress Tracking** | Automatic save & sync across devices |
+| **Offline Reading** | Downloaded books work without internet |
+
+### 🔐 Privacy & Security
+
+- **Your server, your data** — Self-hosted backend
+- **Secure authentication** — JWT tokens with refresh rotation
+- **Encrypted storage** — Tokens stored in secure storage
+- **Per-user libraries** — Each family member has private books
+- **No telemetry** — Zero tracking, zero analytics
+
+### 📲 Cross-Platform
+
+Works everywhere you read:
+
+| Platform | Status |
+|----------|--------|
+| Android | ✅ Ready |
+| iOS | ✅ Ready |
+| Web Browser | ✅ Ready |
+| macOS | ✅ Ready |
+| Windows | ✅ Ready |
+| Linux | ✅ Ready |
 
 ---
 
-## Installation
+## 🚀 Quick Start
 
-### Prerequisites
+### What You Need
 
-| Requirement | Version |
-|-------------|---------|
-| Flutter SDK | 3.1 or higher |
-| Python | 3.9 or higher |
-| Git | Latest |
+- **Flutter SDK** 3.1+
+- **Python** 3.9+
+- **10 minutes** of your time ☕
 
-### Quick Start
-
-#### 1. Clone the Repository
+### Step 1: Clone & Setup Backend
 
 ```bash
+# Clone the repository
 git clone https://github.com/YOUR_USERNAME/diread.git
-cd diread
-```
-
-#### 2. Backend Setup
-
-```bash
-# Navigate to backend
-cd backend
+cd diread/backend
 
 # Create virtual environment
 python3 -m venv venv
@@ -142,344 +98,198 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Configure environment
-cp .env.example .env
-# Edit .env with your settings (see Configuration section)
-
-# Run server
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+# Start the server
+python main.py
 ```
 
-The API will be available at `http://localhost:8000`
+🎉 Backend running at `http://localhost:8000`
 
-Interactive API docs: `http://localhost:8000/docs`
-
-#### 3. Frontend Setup
+### Step 2: Run the App
 
 ```bash
 # From project root
 cd ..
-
-# Install Flutter dependencies
 flutter pub get
-
-# Configure API endpoint (edit lib/core/config/app_config.dart)
-# Set baseUrl to your backend server address
-
-# Run the app
 flutter run
 ```
 
-### Platform-Specific Commands
+### Step 3: Create Your Account
 
-```bash
-# iOS (requires macOS)
-flutter run -d ios
-
-# Android
-flutter run -d android
-
-# macOS Desktop
-flutter run -d macos
-
-# Web
-flutter run -d chrome
-```
+1. Open the app
+2. Tap "Create Account"
+3. Start uploading your books!
 
 ---
 
-## Configuration
+## 📸 Screenshots
 
-### Backend Environment Variables
-
-Create a `.env` file in the `backend/` directory:
-
-```env
-# Required
-SECRET_KEY=your-super-secret-key-change-this-in-production
-
-# Database (SQLite default, PostgreSQL for production)
-DATABASE_URL=sqlite+aiosqlite:///./diread.db
-
-# File Storage
-STORAGE_TYPE=local
-STORAGE_PATH=./storage
-
-# Token Expiry
-ACCESS_TOKEN_EXPIRE_MINUTES=15
-REFRESH_TOKEN_EXPIRE_DAYS=30
-
-# Upload Limits
-MAX_FILE_SIZE_MB=100
-ALLOWED_EXTENSIONS=pdf,epub
-```
-
-### Frontend Configuration
-
-Edit `lib/core/config/app_config.dart`:
-
-```dart
-class AppConfig {
-  // Your backend server URL
-  static const String baseUrl = 'http://localhost:8000';
-
-  // For production, use your deployed server:
-  // static const String baseUrl = 'https://api.yourdiread.com';
-}
-```
+<p align="center">
+  <em>Coming soon — beautiful screenshots of the reading experience</em>
+</p>
 
 ---
 
-## Documentation
+## 🎨 Reading Themes
 
-| Document | Description |
-|----------|-------------|
-| [Backend Guide](backend/README.md) | API server setup and configuration |
-| [API Reference](docs/API.md) | Complete API documentation |
-| [Architecture](docs/ARCHITECTURE.md) | System design and structure |
-| [Contributing](CONTRIBUTING.md) | How to contribute |
+Choose the theme that's easiest on your eyes:
 
----
-
-## Tech Stack
-
-### Frontend
-
-| Technology | Purpose |
-|------------|---------|
-| **Flutter** | Cross-platform UI framework |
-| **Provider** | State management |
-| **go_router** | Declarative routing |
-| **Dio** | HTTP client with interceptors |
-| **SQLite** | Local offline database |
-| **Syncfusion PDF Viewer** | PDF rendering |
-| **flutter_secure_storage** | Secure token storage |
-
-### Backend
-
-| Technology | Purpose |
-|------------|---------|
-| **FastAPI** | Modern async REST API |
-| **SQLAlchemy** | Async ORM |
-| **Pydantic** | Data validation |
-| **PyJWT** | JWT authentication |
-| **bcrypt** | Password hashing |
-| **pypdf** | PDF metadata extraction |
-| **ebooklib** | EPUB parsing |
+| Theme | Background | Best For |
+|-------|------------|----------|
+| ☀️ **Light** | Pure White | Bright environments |
+| 🌙 **Dark** | Deep Black | Night reading |
+| 📜 **Sepia** | Warm Beige | Long reading sessions |
+| 💙 **Blue** | Soft Blue | Reduced eye strain |
+| 🌿 **Green** | Calm Green | Relaxed reading |
+| 🍦 **Cream** | Soft Yellow | Comfortable contrast |
 
 ---
 
-## Project Structure
+## 📂 What Can You Upload?
+
+| Format | Max Size | Features |
+|--------|----------|----------|
+| **PDF** | 100 MB | Full rendering, zoom, scroll modes |
+| **EPUB** | 100 MB | Reflowable text, TOC, custom fonts |
+
+Automatic extraction of:
+- 📖 Book title
+- ✍️ Author name
+- 🖼️ Cover image
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend (Flutter)
+- **Provider** — State management
+- **go_router** — Navigation with auth guards
+- **Dio** — HTTP client with token refresh
+- **Syncfusion** — PDF rendering
+- **flutter_secure_storage** — Secure token storage
+
+### Backend (Python)
+- **FastAPI** — Async REST API
+- **SQLAlchemy** — Database ORM
+- **PyJWT** — Authentication
+- **bcrypt** — Password hashing
+- **pypdf + ebooklib** — Metadata extraction
+
+---
+
+## 🗺️ Roadmap
+
+### ✅ Version 1.0 (Current)
+- [x] PDF & EPUB reading
+- [x] 6 reading themes
+- [x] 3 scroll directions
+- [x] Bookmarks with visual feedback
+- [x] Session persistence (stay logged in)
+- [x] Splash screen
+- [x] Cross-platform support
+- [x] Offline reading
+- [x] Progress sync
+
+### 🔜 Version 1.1 (Next)
+- [ ] Full-text search inside books
+- [ ] Highlights with notes
+- [ ] Export annotations
+- [ ] Reading statistics
+
+### 🔮 Future
+- [ ] Family sharing
+- [ ] Book collections
+- [ ] Text-to-speech
+- [ ] Reading goals
+
+---
+
+## 📁 Project Structure
 
 ```
 diread/
-├── lib/                              # Flutter application
-│   ├── core/                         # Core utilities
-│   │   ├── config/                   # App & theme configuration
-│   │   ├── constants/                # API constants
-│   │   ├── errors/                   # Exception definitions
-│   │   └── utils/                    # Validators, helpers
-│   ├── data/                         # Data layer
-│   │   ├── local/                    # Local database
-│   │   ├── models/                   # Data models
-│   │   ├── repositories/             # Repository pattern
-│   │   └── services/                 # API services
-│   └── presentation/                 # UI layer
-│       ├── providers/                # State management
-│       ├── screens/                  # App screens
-│       │   ├── auth/                 # Login, Register, Forgot Password
-│       │   ├── library/              # Library, Book Details
-│       │   ├── reader/               # PDF, EPUB readers
-│       │   └── profile/              # User profile
-│       └── widgets/                  # Reusable components
+├── lib/                    # Flutter app
+│   ├── core/               # Config, theme, utilities
+│   ├── data/               # Models, repositories, API
+│   └── presentation/       # UI screens & providers
 │
-├── backend/                          # FastAPI server
-│   ├── app/
-│   │   ├── models/                   # Database models
-│   │   ├── routers/                  # API endpoints
-│   │   ├── schemas/                  # Request/Response schemas
-│   │   ├── services/                 # Business logic
-│   │   └── utils/                    # Security, helpers
-│   ├── main.py                       # Application entry
-│   ├── requirements.txt              # Python dependencies
-│   └── Dockerfile                    # Container config
+├── backend/                # FastAPI server
+│   ├── app/                # Routes, models, services
+│   ├── main.py             # Entry point
+│   └── requirements.txt    # Dependencies
 │
-├── assets/                           # Static assets
-│   ├── images/
-│   ├── icons/
-│   └── fonts/
-│
-├── docs/                             # Documentation
-│   ├── API.md
-│   └── ARCHITECTURE.md
-│
-└── pubspec.yaml                      # Flutter dependencies
+└── assets/                 # Images, icons, fonts
 ```
 
 ---
 
-## API Overview
+## 🔧 Configuration
 
-### Authentication
+### Backend (.env)
 
-```
-POST /api/v1/auth/register    # Create account
-POST /api/v1/auth/login       # Sign in
-POST /api/v1/auth/refresh     # Refresh token
-POST /api/v1/auth/logout      # Sign out
-```
-
-### Books
-
-```
-GET    /api/v1/books              # List all books
-POST   /api/v1/books/upload       # Upload new book
-GET    /api/v1/books/{id}         # Get book details
-DELETE /api/v1/books/{id}         # Delete book
-GET    /api/v1/books/{id}/download # Download file
+```env
+SECRET_KEY=your-super-secret-key
+DATABASE_URL=sqlite+aiosqlite:///./diread.db
+MAX_FILE_SIZE_MB=100
 ```
 
-### Reading Progress
+### Frontend (app_config.dart)
 
+```dart
+static const String apiBaseUrl = 'http://YOUR_SERVER:8000/api/v1';
 ```
-GET /api/v1/books/{id}/progress   # Get progress
-PUT /api/v1/books/{id}/progress   # Update progress
-```
-
-### Bookmarks & Highlights
-
-```
-GET    /api/v1/books/{id}/bookmarks           # List bookmarks
-POST   /api/v1/books/{id}/bookmarks           # Add bookmark
-DELETE /api/v1/books/{id}/bookmarks/{bid}     # Remove bookmark
-
-GET    /api/v1/books/{id}/highlights          # List highlights
-POST   /api/v1/books/{id}/highlights          # Add highlight
-PUT    /api/v1/books/{id}/highlights/{hid}    # Update highlight
-DELETE /api/v1/books/{id}/highlights/{hid}    # Remove highlight
-```
-
-> Full API documentation available at `/docs` when running the server.
 
 ---
 
-## Deployment
+## 🚢 Deployment
 
-### Backend (Production)
-
-#### Option 1: Railway
+### Android Release
 
 ```bash
-# Install Railway CLI
-npm install -g @railway/cli
-
-# Deploy
-railway login
-railway init
-railway up
+flutter build apk --release
+# Output: build/app/outputs/flutter-apk/app-release.apk
 ```
 
-#### Option 2: Docker
+### Backend (Docker)
 
 ```bash
 cd backend
 docker build -t diread-api .
-docker run -p 8000:8000 --env-file .env diread-api
-```
-
-#### Option 3: Manual VPS
-
-```bash
-# On your server
-git clone <repo>
-cd diread/backend
-pip install -r requirements.txt
-gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
-```
-
-### Mobile App (Release Build)
-
-```bash
-# Android APK
-flutter build apk --release
-
-# Android App Bundle (Play Store)
-flutter build appbundle --release
-
-# iOS (requires macOS + Apple Developer account)
-flutter build ios --release
+docker run -p 8000:8000 diread-api
 ```
 
 ---
 
-## Roadmap
+## 🤝 Contributing
 
-### Version 1.0 ✅ (Current)
-- [x] EPUB reader implementation
-- [x] Password reset via email
-- [x] Web platform support
-- [x] Table of contents (EPUB)
+We welcome contributions! Here's how:
 
-### Version 1.1 (Next)
-- [ ] Search inside books
-- [ ] Font family selection
-- [ ] Sepia reading theme
-
-### Future
-- [ ] Family sharing features
-- [ ] Book collections/folders
-- [ ] Reading statistics & goals
-- [ ] Annotations export (PDF/Markdown)
-- [ ] Text-to-speech
+1. Fork the repository
+2. Create your branch: `git checkout -b feature/awesome`
+3. Commit changes: `git commit -m 'Add awesome feature'`
+4. Push: `git push origin feature/awesome`
+5. Open a Pull Request
 
 ---
 
-## Security
+## 📄 License
 
-| Feature | Implementation |
-|---------|----------------|
-| Password Storage | bcrypt with salt |
-| Authentication | JWT with short-lived access tokens |
-| Token Refresh | Secure refresh token rotation |
-| File Access | Authenticated endpoints only |
-| Communication | HTTPS required in production |
+This project is designed for private/family use. See [LICENSE](LICENSE) for details.
 
 ---
 
-## Contributing
+## 🙏 Acknowledgments
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-```bash
-# Fork the repo
-# Create your feature branch
-git checkout -b feature/amazing-feature
-
-# Commit your changes
-git commit -m 'Add amazing feature'
-
-# Push to the branch
-git push origin feature/amazing-feature
-
-# Open a Pull Request
-```
-
----
-
-## License
-
-This project is for private/family use. See [LICENSE](LICENSE) for details.
-
----
-
-## Acknowledgments
-
-- [Flutter](https://flutter.dev) — Beautiful native apps
-- [FastAPI](https://fastapi.tiangolo.com) — Modern Python web framework
+Built with love using:
+- [Flutter](https://flutter.dev) — Beautiful cross-platform apps
+- [FastAPI](https://fastapi.tiangolo.com) — Modern Python API framework
 - [Syncfusion](https://www.syncfusion.com) — PDF viewer component
 
 ---
 
 <p align="center">
-  Made with ❤️ for families who love reading
+  <strong>Made with ❤️ for families who love reading together</strong>
+</p>
+
+<p align="center">
+  <sub>diRead — Because your books deserve a beautiful home.</sub>
 </p>

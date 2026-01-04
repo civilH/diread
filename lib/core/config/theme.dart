@@ -195,6 +195,9 @@ enum ReadingTheme {
   light,
   dark,
   sepia,
+  blue,
+  green,
+  cream,
 }
 
 extension ReadingThemeExtension on ReadingTheme {
@@ -206,6 +209,12 @@ extension ReadingThemeExtension on ReadingTheme {
         return AppTheme.darkBackground;
       case ReadingTheme.sepia:
         return AppTheme.sepiaBackground;
+      case ReadingTheme.blue:
+        return const Color(0xFFE3F2FD); // Light blue
+      case ReadingTheme.green:
+        return const Color(0xFFE8F5E9); // Light green
+      case ReadingTheme.cream:
+        return const Color(0xFFFFFDE7); // Cream/yellow
     }
   }
 
@@ -217,10 +226,16 @@ extension ReadingThemeExtension on ReadingTheme {
         return AppTheme.darkText;
       case ReadingTheme.sepia:
         return AppTheme.sepiaText;
+      case ReadingTheme.blue:
+        return const Color(0xFF1A237E); // Dark blue
+      case ReadingTheme.green:
+        return const Color(0xFF1B5E20); // Dark green
+      case ReadingTheme.cream:
+        return const Color(0xFF3E2723); // Dark brown
     }
   }
 
-  String get name {
+  String get displayName {
     switch (this) {
       case ReadingTheme.light:
         return 'Light';
@@ -228,6 +243,43 @@ extension ReadingThemeExtension on ReadingTheme {
         return 'Dark';
       case ReadingTheme.sepia:
         return 'Sepia';
+      case ReadingTheme.blue:
+        return 'Blue';
+      case ReadingTheme.green:
+        return 'Green';
+      case ReadingTheme.cream:
+        return 'Cream';
+    }
+  }
+}
+
+// Scroll Direction Enum for Reading
+enum ScrollDirection {
+  horizontal,
+  vertical,
+  continuous,
+}
+
+extension ScrollDirectionExtension on ScrollDirection {
+  String get displayName {
+    switch (this) {
+      case ScrollDirection.horizontal:
+        return 'Horizontal';
+      case ScrollDirection.vertical:
+        return 'Vertical';
+      case ScrollDirection.continuous:
+        return 'Continuous';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case ScrollDirection.horizontal:
+        return Icons.swap_horiz;
+      case ScrollDirection.vertical:
+        return Icons.swap_vert;
+      case ScrollDirection.continuous:
+        return Icons.view_day;
     }
   }
 }
