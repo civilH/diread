@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'app.dart';
+import 'core/services/api_config_service.dart';
 import 'data/services/api_service.dart';
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/book_repository.dart';
@@ -21,6 +22,9 @@ void main() async {
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
+
+  // Initialize API configuration (load saved server URL)
+  await ApiConfigService.init();
 
   // Initialize services
   final apiService = ApiService();

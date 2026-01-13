@@ -110,6 +110,15 @@ class BookCard extends StatelessWidget {
                             book.fileSizeFormatted,
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
+                        if (book.readingTimeShort.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Icon(Icons.schedule, size: 14, color: Colors.grey.shade600),
+                          const SizedBox(width: 2),
+                          Text(
+                            book.readingTimeShort,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
                         const Spacer(),
                         if (book.isDownloaded)
                           const Icon(

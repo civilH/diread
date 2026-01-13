@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
@@ -224,16 +225,20 @@ class ReaderProvider with ChangeNotifier {
     // Progress is saved via _debouncedSaveProgress when page/cfi changes
   }
 
-  DateTime? _lastSaveTime;
+  Timer? _saveProgressTimer;
 
   void _debouncedSaveProgress() {
-    final now = DateTime.now();
-    if (_lastSaveTime != null &&
-        now.difference(_lastSaveTime!) < const Duration(seconds: 2)) {
-      return;
-    }
-    _lastSaveTime = now;
-    _saveProgress();
+    // Cancel any pending save and schedule a new one
+    // This ensures we only save after user stops scrolling for 3 seconds
+    _saveProgressTimer?.cancel();
+    _saveProgressTimer = Timer(const Duration(seconds: 3), () {
+      _saveProgress();
+    });
+  }
+
+  void _cancelPendingProgressSave() {
+    _saveProgressTimer?.cancel();
+    _saveProgressTimer = null;
   }
 
   Future<void> _saveProgress() async {
@@ -279,14 +284,14 @@ class ReaderProvider with ChangeNotifier {
       _currentCfi = bookmark.cfi;
     }
     notifyListeners();
-    await _saveProgress();
+    _debouncedSaveProgress();
   }
 
   Future<void> goToPage(int page) async {
     if (page < 0 || page >= _totalPages) return;
     _currentPage = page;
     notifyListeners();
-    await _saveProgress();
+    _debouncedSaveProgress();
   }
 
   Future<void> goToChapter(Map<String, dynamic> chapter) async {
@@ -299,7 +304,7 @@ class ReaderProvider with ChangeNotifier {
       _currentPage = chapter['page'] as int;
     }
     notifyListeners();
-    await _saveProgress();
+    _debouncedSaveProgress();
   }
 
   // Highlight Methods
@@ -396,7 +401,13 @@ class ReaderProvider with ChangeNotifier {
     await _dbHelper.updateReadingSettings(_settings.toMap());
   }
 
-  void closeBook({bool notify = true}) {
+  Future<void> closeBook({bool notify = true}) async {
+    // Save any pending progress before closing
+    _cancelPendingProgressSave();
+    if (_currentBook != null) {
+      await _saveProgress();
+    }
+
     _currentBook = null;
     _bookFile = null;
     _bookBytes = null; // Reset web book bytes

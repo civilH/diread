@@ -55,6 +55,23 @@ class BookDetailScreen extends StatelessWidget {
 
                       // Info Row
                       _buildInfoRow(context, book),
+
+                      // Reading time estimate
+                      if (book.estimatedReadingTime.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Icon(Icons.schedule, size: 20, color: Colors.grey.shade600),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Estimated reading time: ${book.estimatedReadingTime}',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 32),
 
                       // Read Button

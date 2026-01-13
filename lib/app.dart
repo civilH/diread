@@ -7,10 +7,9 @@ import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/auth/register_screen.dart';
 import 'presentation/screens/auth/forgot_password_screen.dart';
 import 'presentation/screens/auth/reset_password_screen.dart';
-import 'presentation/screens/library/library_screen.dart';
+import 'presentation/screens/main_shell.dart';
 import 'presentation/screens/library/book_detail_screen.dart';
 import 'presentation/screens/reader/reader_screen.dart';
-import 'presentation/screens/profile/profile_screen.dart';
 
 class DiReadApp extends StatefulWidget {
   const DiReadApp({super.key});
@@ -58,7 +57,7 @@ class _DiReadAppState extends State<DiReadApp> {
 
         // Done loading - redirect from splash
         if (isSplash) {
-          return isAuthenticated ? '/library' : '/login';
+          return isAuthenticated ? '/' : '/login';
         }
 
         // Not authenticated - go to login
@@ -66,9 +65,9 @@ class _DiReadAppState extends State<DiReadApp> {
           return '/login';
         }
 
-        // Authenticated but on auth route - go to library
+        // Authenticated but on auth route - go to home
         if (isAuthenticated && isAuthRoute) {
-          return '/library';
+          return '/';
         }
 
         return null;
@@ -106,9 +105,19 @@ class _DiReadAppState extends State<DiReadApp> {
 
         // Main App Routes
         GoRoute(
+          path: '/',
+          name: 'home',
+          builder: (context, state) => const MainShell(initialIndex: 0),
+        ),
+        GoRoute(
           path: '/library',
           name: 'library',
-          builder: (context, state) => const LibraryScreen(),
+          builder: (context, state) => const MainShell(initialIndex: 1),
+        ),
+        GoRoute(
+          path: '/profile',
+          name: 'profile',
+          builder: (context, state) => const MainShell(initialIndex: 2),
         ),
         GoRoute(
           path: '/book/:id',
@@ -125,11 +134,6 @@ class _DiReadAppState extends State<DiReadApp> {
             final bookId = state.pathParameters['id']!;
             return ReaderScreen(bookId: bookId);
           },
-        ),
-        GoRoute(
-          path: '/profile',
-          name: 'profile',
-          builder: (context, state) => const ProfileScreen(),
         ),
       ],
     );

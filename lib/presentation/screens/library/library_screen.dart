@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/library_provider.dart';
 import '../../widgets/book_card.dart';
 import '../../widgets/book_grid.dart';
@@ -19,12 +18,30 @@ class LibraryScreen extends StatefulWidget {
 
 class _LibraryScreenState extends State<LibraryScreen> {
   bool _isGridView = true;
+  bool _isSearching = false;
+  final _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<LibraryProvider>().loadBooks();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearching = !_isSearching;
+      if (!_isSearching) {
+        _searchController.clear();
+        context.read<LibraryProvider>().clearSearch();
+      }
     });
   }
 
@@ -158,24 +175,54 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Library'),
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Search books...',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(color: Colors.grey.shade600),
+                ),
+                style: const TextStyle(fontSize: 18),
+                onChanged: (value) {
+                  context.read<LibraryProvider>().setSearchQuery(value);
+                },
+              )
+            : const Text('My Library'),
+        leading: _isSearching
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: _toggleSearch,
+              )
+            : null,
         actions: [
-          IconButton(
-            icon: Icon(_isGridView ? Icons.view_list : Icons.grid_view),
-            onPressed: () {
-              setState(() {
-                _isGridView = !_isGridView;
-              });
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.sort),
-            onPressed: _showSortOptions,
-          ),
-          IconButton(
-            icon: const Icon(Icons.person_outline),
-            onPressed: () => context.push('/profile'),
-          ),
+          if (!_isSearching) ...[
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: _toggleSearch,
+            ),
+            IconButton(
+              icon: Icon(_isGridView ? Icons.view_list : Icons.grid_view),
+              onPressed: () {
+                setState(() {
+                  _isGridView = !_isGridView;
+                });
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.sort),
+              onPressed: _showSortOptions,
+            ),
+          ] else ...[
+            IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () {
+                _searchController.clear();
+                context.read<LibraryProvider>().clearSearch();
+              },
+            ),
+          ],
         ],
       ),
       body: Consumer<LibraryProvider>(
@@ -213,6 +260,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
           }
 
           if (library.books.isEmpty) {
+            // Check if it's due to search filter
+            if (library.hasSearchQuery) {
+              return _buildNoSearchResults(library.searchQuery);
+            }
             return _buildEmptyState();
           }
 
@@ -280,6 +331,36 @@ class _LibraryScreenState extends State<LibraryScreen> {
             onPressed: _uploadBook,
             icon: const Icon(Icons.add),
             label: const Text('Add Book'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoSearchResults(String query) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.search_off,
+            size: 80,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'No results found',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'No books matching "$query"',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 24),
+          OutlinedButton(
+            onPressed: _toggleSearch,
+            child: const Text('Clear Search'),
           ),
         ],
       ),

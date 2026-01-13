@@ -5,15 +5,25 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/config/app_config.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/errors/exceptions.dart';
+import '../../core/services/api_config_service.dart';
 
 class ApiService {
-  late final Dio _dio;
+  late Dio _dio;
   final FlutterSecureStorage _storage;
+  String _currentBaseUrl;
 
   ApiService({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage() {
+      : _storage = storage ?? const FlutterSecureStorage(),
+        _currentBaseUrl = ApiConfigService.getApiBaseUrlSync().isNotEmpty
+            ? ApiConfigService.getApiBaseUrlSync()
+            : AppConfig.apiBaseUrl {
+    _initDio(_currentBaseUrl);
+  }
+
+  void _initDio(String baseUrl) {
+    _currentBaseUrl = baseUrl;
     _dio = Dio(BaseOptions(
-      baseUrl: AppConfig.apiBaseUrl,
+      baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       headers: {
@@ -51,13 +61,22 @@ class ApiService {
     ));
   }
 
+  /// Update the base URL and reinitialize Dio
+  Future<void> updateBaseUrl(String newUrl) async {
+    await ApiConfigService.setApiBaseUrl(newUrl);
+    _initDio(newUrl);
+  }
+
+  /// Get current base URL
+  String get currentBaseUrl => _currentBaseUrl;
+
   Future<bool> _refreshToken() async {
     try {
       final refreshToken = await _storage.read(key: AppConfig.refreshTokenKey);
       if (refreshToken == null) return false;
 
       final response = await Dio().post(
-        '${AppConfig.apiBaseUrl}${ApiConstants.refreshToken}',
+        '$_currentBaseUrl${ApiConstants.refreshToken}',
         data: {'refresh_token': refreshToken},
       );
 

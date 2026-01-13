@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/library_provider.dart';
 import '../../../core/utils/file_utils.dart';
+import '../../../data/models/reading_stats.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -15,11 +16,14 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   int _cacheSize = 0;
+  ReadingStats? _stats;
+  bool _loadingStats = true;
 
   @override
   void initState() {
     super.initState();
     _loadCacheSize();
+    _loadStats();
   }
 
   Future<void> _loadCacheSize() async {
@@ -31,6 +35,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       _cacheSize = size;
     });
+  }
+
+  Future<void> _loadStats() async {
+    setState(() => _loadingStats = true);
+    try {
+      final library = context.read<LibraryProvider>();
+      final stats = await library.getReadingStats();
+      if (mounted) {
+        setState(() {
+          _stats = stats;
+          _loadingStats = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loadingStats = false);
+      }
+    }
   }
 
   Future<void> _clearCache() async {
@@ -123,10 +145,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        ),
+        automaticallyImplyLeading: false,
       ),
       body: Consumer2<AuthProvider, LibraryProvider>(
         builder: (context, auth, library, _) {
@@ -178,25 +197,104 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Stats Section
+              // Stats Section - Reading Statistics
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildStatItem(
-                        context,
-                        Icons.library_books,
-                        '${library.books.length}',
-                        'Books',
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.bar_chart_rounded,
+                            color: Theme.of(context).primaryColor,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Reading Statistics',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
-                      _buildStatItem(
-                        context,
-                        Icons.download_done,
-                        '${library.books.where((b) => b.isDownloaded).length}',
-                        'Downloaded',
-                      ),
+                      const SizedBox(height: 16),
+                      if (_loadingStats)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(16),
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
+                      else ...[
+                        // Main stats row
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildStatItem(
+                              context,
+                              Icons.library_books_rounded,
+                              '${_stats?.totalBooks ?? library.books.length}',
+                              'Total Books',
+                            ),
+                            _buildStatItem(
+                              context,
+                              Icons.check_circle_rounded,
+                              '${_stats?.booksCompleted ?? 0}',
+                              'Completed',
+                            ),
+                            _buildStatItem(
+                              context,
+                              Icons.auto_stories_rounded,
+                              '${_stats?.booksInProgress ?? 0}',
+                              'In Progress',
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        // Additional stats
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildStatItem(
+                              context,
+                              Icons.menu_book_rounded,
+                              '${_stats?.totalPagesRead ?? 0}',
+                              'Pages Read',
+                            ),
+                            _buildStatItem(
+                              context,
+                              Icons.download_done_rounded,
+                              '${library.books.where((b) => b.isDownloaded).length}',
+                              'Downloaded',
+                            ),
+                            _buildStatItem(
+                              context,
+                              Icons.local_fire_department_rounded,
+                              '${_stats?.currentStreak ?? 0}',
+                              'Day Streak',
+                              iconColor: (_stats?.currentStreak ?? 0) > 0
+                                  ? Colors.orange
+                                  : null,
+                            ),
+                          ],
+                        ),
+                        if (_stats?.lastReadAt != null) ...[
+                          const SizedBox(height: 16),
+                          Center(
+                            child: Text(
+                              'Last read: ${_formatDate(_stats!.lastReadAt!)}',
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ],
                   ),
                 ),
@@ -266,21 +364,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
     BuildContext context,
     IconData icon,
     String value,
-    String label,
-  ) {
+    String label, {
+    Color? iconColor,
+  }) {
     return Column(
       children: [
-        Icon(icon, size: 32, color: Theme.of(context).primaryColor),
-        const SizedBox(height: 8),
+        Icon(
+          icon,
+          size: 28,
+          color: iconColor ?? Theme.of(context).primaryColor,
+        ),
+        const SizedBox(height: 6),
         Text(
           value,
-          style: Theme.of(context).textTheme.titleLarge,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
         ),
         Text(
           label,
-          style: Theme.of(context).textTheme.bodyMedium,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Colors.grey.shade600,
+          ),
         ),
       ],
     );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dateOnly = DateTime(date.year, date.month, date.day);
+    final difference = today.difference(dateOnly).inDays;
+
+    if (difference == 0) {
+      return 'Today';
+    } else if (difference == 1) {
+      return 'Yesterday';
+    } else if (difference < 7) {
+      return '$difference days ago';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
   }
 }

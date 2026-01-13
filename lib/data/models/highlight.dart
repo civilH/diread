@@ -4,17 +4,24 @@ import 'package:json_annotation/json_annotation.dart';
 part 'highlight.g.dart';
 
 enum HighlightColor {
-  @JsonValue('yellow')
   yellow,
-  @JsonValue('green')
   green,
-  @JsonValue('blue')
   blue,
-  @JsonValue('pink')
   pink,
-  @JsonValue('orange')
   orange,
 }
+
+// Custom converter to handle case-insensitive color parsing
+HighlightColor highlightColorFromString(String? value) {
+  if (value == null) return HighlightColor.yellow;
+  final lowercaseValue = value.toLowerCase();
+  return HighlightColor.values.firstWhere(
+    (e) => e.name == lowercaseValue,
+    orElse: () => HighlightColor.yellow,
+  );
+}
+
+String _highlightColorToString(HighlightColor color) => color.name;
 
 extension HighlightColorExtension on HighlightColor {
   int get colorValue {
@@ -59,6 +66,7 @@ class Highlight extends Equatable {
   @JsonKey(name: 'page_number')
   final int? pageNumber;
   final String? cfi; // For EPUB location
+  @JsonKey(fromJson: highlightColorFromString, toJson: _highlightColorToString)
   final HighlightColor color;
   final String? note;
   @JsonKey(name: 'created_at')

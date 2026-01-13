@@ -13,8 +13,9 @@ Highlight _$HighlightFromJson(Map<String, dynamic> json) => Highlight(
       text: json['text'] as String,
       pageNumber: (json['page_number'] as num?)?.toInt(),
       cfi: json['cfi'] as String?,
-      color: $enumDecodeNullable(_$HighlightColorEnumMap, json['color']) ??
-          HighlightColor.yellow,
+      color: json['color'] == null
+          ? HighlightColor.yellow
+          : highlightColorFromString(json['color'] as String?),
       note: json['note'] as String?,
       createdAt: json['created_at'] == null
           ? null
@@ -28,15 +29,7 @@ Map<String, dynamic> _$HighlightToJson(Highlight instance) => <String, dynamic>{
       'text': instance.text,
       'page_number': instance.pageNumber,
       'cfi': instance.cfi,
-      'color': _$HighlightColorEnumMap[instance.color]!,
+      'color': _highlightColorToString(instance.color),
       'note': instance.note,
       'created_at': instance.createdAt?.toIso8601String(),
     };
-
-const _$HighlightColorEnumMap = {
-  HighlightColor.yellow: 'yellow',
-  HighlightColor.green: 'green',
-  HighlightColor.blue: 'blue',
-  HighlightColor.pink: 'pink',
-  HighlightColor.orange: 'orange',
-};

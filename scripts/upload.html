@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>diRead - Book Uploader</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; text-align: center; }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        label { display: block; margin-bottom: 5px; font-weight: 600; color: #555; }
+        input[type="text"], input[type="email"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        button:hover { background: #45a049; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .upload-area {
+            border: 2px dashed #4CAF50;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .upload-area:hover { background: #f0fff0; }
+        .upload-area.dragover { background: #e0ffe0; border-color: #2e7d32; }
+        #fileInput { display: none; }
+        .status { padding: 10px; border-radius: 8px; margin-top: 15px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        #uploadList { margin-top: 20px; }
+        .upload-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        .upload-item.success { background: #d4edda; }
+        .upload-item.error { background: #f8d7da; }
+        .upload-item.uploading { background: #fff3cd; }
+        #loginSection { display: block; }
+        #uploadSection { display: none; }
+        .logout-btn { background: #dc3545; }
+        .logout-btn:hover { background: #c82333; }
+        .user-info { text-align: center; margin-bottom: 20px; color: #666; }
+    </style>
+</head>
+<body>
+    <h1>📚 diRead Book Uploader</h1>
+
+    <!-- Login Section -->
+    <div id="loginSection" class="card">
+        <h2>Login</h2>
+        <label>Server URL</label>
+        <input type="text" id="serverUrl" placeholder="e.g., http://localhost:8000/api/v1">
+        <label>Email</label>
+        <input type="email" id="email" placeholder="Enter your email">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="Enter your password">
+        <button onclick="login()">Login</button>
+        <div id="loginStatus"></div>
+    </div>
+
+    <!-- Upload Section -->
+    <div id="uploadSection" class="card">
+        <div class="user-info">Logged in as: <strong id="userName"></strong></div>
+
+        <div class="upload-area" id="dropZone" onclick="document.getElementById('fileInput').click()">
+            <p>📁 Click or drag PDF/EPUB files here</p>
+            <p style="font-size: 14px; color: #888;">Supports multiple files</p>
+        </div>
+        <input type="file" id="fileInput" multiple accept=".pdf,.epub">
+
+        <div id="uploadList"></div>
+        <div id="uploadStatus"></div>
+
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <script>
+        // Server URL from localStorage or default
+        let API_BASE = localStorage.getItem('diread_server') || 'http://localhost:8000/api/v1';
+        let accessToken = localStorage.getItem('diread_token');
+        let userName = localStorage.getItem('diread_user');
+
+        // Set saved server URL in input
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedServer = localStorage.getItem('diread_server');
+            if (savedServer) {
+                document.getElementById('serverUrl').value = savedServer;
+            }
+        });
+
+        // Check if already logged in
+        if (accessToken) {
+            showUploadSection();
+        }
+
+        async function login() {
+            const serverUrl = document.getElementById('serverUrl').value.trim();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const statusDiv = document.getElementById('loginStatus');
+
+            // Update API_BASE if server URL provided
+            if (serverUrl) {
+                API_BASE = serverUrl.endsWith('/api/v1') ? serverUrl : serverUrl + '/api/v1';
+                localStorage.setItem('diread_server', API_BASE);
+            }
+
+            try {
+                statusDiv.innerHTML = '<div class="status info">Logging in...</div>';
+
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    accessToken = data.access_token;
+                    userName = data.user.name || data.user.email;
+                    localStorage.setItem('diread_token', accessToken);
+                    localStorage.setItem('diread_user', userName);
+                    statusDiv.innerHTML = '<div class="status success">Login successful!</div>';
+                    setTimeout(showUploadSection, 500);
+                } else {
+                    statusDiv.innerHTML = `<div class="status error">Login failed: ${data.detail || 'Unknown error'}</div>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">Error: ${error.message}</div>`;
+            }
+        }
+
+        function showUploadSection() {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('uploadSection').style.display = 'block';
+            document.getElementById('userName').textContent = userName;
+        }
+
+        function logout() {
+            localStorage.removeItem('diread_token');
+            localStorage.removeItem('diread_user');
+            accessToken = null;
+            document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('uploadList').innerHTML = '';
+        }
+
+        // File input handler
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        // Drag and drop handlers
+        const dropZone = document.getElementById('dropZone');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        async function handleFiles(files) {
+            const uploadList = document.getElementById('uploadList');
+
+            for (const file of files) {
+                if (!file.name.match(/\.(pdf|epub)$/i)) {
+                    continue;
+                }
+
+                const itemId = 'upload-' + Date.now() + Math.random();
+                uploadList.innerHTML += `
+                    <div class="upload-item uploading" id="${itemId}">
+                        <span>📄 ${file.name}</span>
+                        <span>Uploading...</span>
+                    </div>
+                `;
+
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    const response = await fetch(`${API_BASE}/books/upload`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${accessToken}` },
+                        body: formData
+                    });
+
+                    const item = document.getElementById(itemId);
+                    if (response.ok) {
+                        item.className = 'upload-item success';
+                        item.innerHTML = `<span>📄 ${file.name}</span><span>✅ Uploaded!</span>`;
+                    } else {
+                        const data = await response.json();
+                        item.className = 'upload-item error';
+                        item.innerHTML = `<span>📄 ${file.name}</span><span>❌ ${data.detail || 'Failed'}</span>`;
+                    }
+                } catch (error) {
+                    const item = document.getElementById(itemId);
+                    item.className = 'upload-item error';
+                    item.innerHTML = `<span>📄 ${file.name}</span><span>❌ ${error.message}</span>`;
+                }
+            }
+        }
+    </script>
+</body>
+</html>

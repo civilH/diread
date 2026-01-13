@@ -13,6 +13,14 @@ class AuthRepository {
   })  : _apiService = apiService,
         _storage = storage ?? const FlutterSecureStorage();
 
+  /// Reinitialize the API service with a new base URL
+  Future<void> reinitializeApi(String newUrl) async {
+    await _apiService.updateBaseUrl(newUrl);
+  }
+
+  /// Get the current API base URL
+  String get currentApiUrl => _apiService.currentBaseUrl;
+
   Future<User> register({
     required String email,
     required String password,

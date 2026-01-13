@@ -3,17 +3,17 @@ class AppConfig {
   static const String appVersion = '1.0.0';
 
   // API Configuration
-  // For local development, use your Mac's IP address
-  // For production, change this to your deployed backend URL
+  // Users can configure their server URL in the app settings (login screen).
+  // For production, deploy backend and set a fixed URL.
   //
-  // Your Mac IP: 192.168.1.12
-  // - Android Emulator: use 10.0.2.2
-  // - iOS Simulator: use localhost or 127.0.0.1
-  // - Real Device (Android/iPhone): use Mac's IP address
+  // Development options:
+  // - Android Emulator: use 10.0.2.2:8000
+  // - iOS Simulator: use localhost:8000
+  // - Physical device: use your server's IP address
   //
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://192.168.1.13:8000/api/v1',
+    defaultValue: 'http://localhost:8000/api/v1',
   );
 
   // File Upload Limits

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../../data/models/user.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../core/errors/exceptions.dart';
+import '../../core/services/api_config_service.dart';
 
 enum AuthStatus {
   initial,
@@ -40,10 +41,9 @@ class AuthProvider with ChangeNotifier {
         // Try to get user data, but don't logout if it fails
         try {
           _user = await _authRepository.getCurrentUser();
-        } catch (e) {
+        } catch (_) {
           // API call failed (network issue, etc.) but token exists
           // Keep user authenticated - they can still use offline features
-          debugPrint('Failed to get current user: $e');
         }
       } else {
         _status = AuthStatus.unauthenticated;
@@ -112,12 +112,12 @@ class AuthProvider with ChangeNotifier {
       _status = AuthStatus.error;
       notifyListeners();
       return false;
-    } on UnauthorizedException catch (e) {
+    } on UnauthorizedException {
       _errorMessage = 'Invalid email or password';
       _status = AuthStatus.error;
       notifyListeners();
       return false;
-    } catch (e) {
+    } catch (_) {
       _errorMessage = 'Login failed. Please try again.';
       _status = AuthStatus.error;
       notifyListeners();
@@ -202,4 +202,13 @@ class AuthProvider with ChangeNotifier {
     }
     notifyListeners();
   }
+
+  /// Reinitialize API service with a new server URL
+  Future<void> reinitializeApi() async {
+    final newUrl = await ApiConfigService.getApiBaseUrl();
+    await _authRepository.reinitializeApi(newUrl);
+  }
+
+  /// Get the current API URL
+  String get currentApiUrl => _authRepository.currentApiUrl;
 }

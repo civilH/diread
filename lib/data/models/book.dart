@@ -99,6 +99,46 @@ class Book extends Equatable {
     return '${(fileSize! / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
+  /// Estimated reading time based on average reading speed
+  /// Assumes ~250 words per page for PDFs, ~300 words per page for EPUBs
+  /// Average reading speed: 200-250 words per minute
+  String get estimatedReadingTime {
+    if (totalPages == null || totalPages == 0) return '';
+
+    // Words per page varies by format
+    final wordsPerPage = fileType == BookType.pdf ? 250 : 300;
+    final totalWords = totalPages! * wordsPerPage;
+
+    // Average reading speed: 225 words per minute
+    final minutes = totalWords / 225;
+
+    if (minutes < 60) {
+      return '${minutes.round()} min';
+    } else {
+      final hours = minutes / 60;
+      if (hours < 24) {
+        return '${hours.toStringAsFixed(1)} hrs';
+      } else {
+        final days = hours / 24;
+        return '${days.toStringAsFixed(1)} days';
+      }
+    }
+  }
+
+  /// Short format for cards
+  String get readingTimeShort {
+    if (totalPages == null || totalPages == 0) return '';
+    final wordsPerPage = fileType == BookType.pdf ? 250 : 300;
+    final totalWords = totalPages! * wordsPerPage;
+    final minutes = totalWords / 225;
+
+    if (minutes < 60) {
+      return '${minutes.round()}m';
+    } else {
+      return '${(minutes / 60).toStringAsFixed(1)}h';
+    }
+  }
+
   @override
   List<Object?> get props => [
         id,

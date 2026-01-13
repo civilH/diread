@@ -11,8 +11,16 @@ import '../../providers/reader_provider.dart';
 class PdfReaderView extends StatefulWidget {
   final File? file;
   final Uint8List? bytes;
+  final VoidCallback? onTap;
+  final Function(String)? onTextSelected;
 
-  const PdfReaderView({super.key, this.file, this.bytes});
+  const PdfReaderView({
+    super.key,
+    this.file,
+    this.bytes,
+    this.onTap,
+    this.onTextSelected,
+  });
 
   @override
   State<PdfReaderView> createState() => _PdfReaderViewState();
@@ -23,6 +31,8 @@ class _PdfReaderViewState extends State<PdfReaderView> {
   Timer? _pageUpdateDebounce;
   int _lastKnownPage = 0;
   ScrollDirection? _lastScrollDirection;
+  String _selectedText = '';
+  bool _hasSelection = false;
 
   @override
   void initState() {
@@ -46,13 +56,43 @@ class _PdfReaderViewState extends State<PdfReaderView> {
 
   void _onPageChanged(int pageNumber) {
     _lastKnownPage = pageNumber - 1;
-    // Debounce page updates to reduce rebuilds
+    // Debounce page updates to reduce rebuilds (300ms for smoother scrolling)
     _pageUpdateDebounce?.cancel();
-    _pageUpdateDebounce = Timer(const Duration(milliseconds: 100), () {
+    _pageUpdateDebounce = Timer(const Duration(milliseconds: 300), () {
       if (mounted) {
         context.read<ReaderProvider>().updatePage(pageNumber - 1);
       }
     });
+  }
+
+  void _onTextSelectionChanged(PdfTextSelectionChangedDetails? details) {
+    if (details?.selectedText != null && details!.selectedText!.isNotEmpty) {
+      setState(() {
+        _selectedText = details.selectedText!;
+        _hasSelection = true;
+      });
+    } else if (details?.selectedText == null || details!.selectedText!.isEmpty) {
+      // Only clear if there's no text (selection was cleared)
+      if (_hasSelection && _selectedText.isEmpty) {
+        setState(() {
+          _hasSelection = false;
+        });
+      }
+    }
+  }
+
+  void _showSelectionOptions() {
+    if (_selectedText.isEmpty) return;
+
+    final text = _selectedText;
+    widget.onTextSelected?.call(text);
+
+    // Clear selection after showing options
+    setState(() {
+      _selectedText = '';
+      _hasSelection = false;
+    });
+    _pdfController?.clearSelection();
   }
 
   @override
@@ -93,19 +133,25 @@ class _PdfReaderViewState extends State<PdfReaderView> {
     final reader = context.read<ReaderProvider>();
 
     // Convert ScrollDirection to Syncfusion options
+    // Horizontal = Page-by-page, swipe left/right (like flipping pages)
+    // Vertical = Continuous scroll (like a web page)
+    // Continuous = Continuous scroll with page indicators
     final PdfPageLayoutMode layoutMode;
     final PdfScrollDirection pdfScrollDirection;
 
     switch (scrollDirection) {
       case ScrollDirection.horizontal:
+        // Single page mode, swipe left/right between pages
         layoutMode = PdfPageLayoutMode.single;
         pdfScrollDirection = PdfScrollDirection.horizontal;
         break;
       case ScrollDirection.vertical:
-        layoutMode = PdfPageLayoutMode.single;
+        // Continuous vertical scrolling (what users expect)
+        layoutMode = PdfPageLayoutMode.continuous;
         pdfScrollDirection = PdfScrollDirection.vertical;
         break;
       case ScrollDirection.continuous:
+        // Same as vertical but with page spacing
         layoutMode = PdfPageLayoutMode.continuous;
         pdfScrollDirection = PdfScrollDirection.vertical;
         break;
@@ -120,11 +166,11 @@ class _PdfReaderViewState extends State<PdfReaderView> {
             key: viewerKey,
             controller: _pdfController,
             enableDoubleTapZooming: true,
-            enableTextSelection: false,
+            enableTextSelection: true,
             canShowScrollHead: true,
             canShowScrollStatus: true,
             canShowPaginationDialog: false,
-            pageSpacing: scrollDirection == ScrollDirection.continuous ? 4 : 0,
+            pageSpacing: scrollDirection != ScrollDirection.horizontal ? 4 : 0,
             pageLayoutMode: layoutMode,
             scrollDirection: pdfScrollDirection,
             onDocumentLoaded: (details) {
@@ -140,17 +186,27 @@ class _PdfReaderViewState extends State<PdfReaderView> {
               debugPrint('PDF load failed: ${details.error}, ${details.description}');
             },
             onPageChanged: (details) => _onPageChanged(details.newPageNumber),
+            onTextSelectionChanged: _onTextSelectionChanged,
+            onTap: (details) {
+              // If text is selected, show the selection menu
+              if (_hasSelection && _selectedText.isNotEmpty) {
+                _showSelectionOptions();
+              } else {
+                // Toggle controls on tap
+                widget.onTap?.call();
+              }
+            },
           )
         : SfPdfViewer.file(
             file!,
             key: viewerKey,
             controller: _pdfController,
             enableDoubleTapZooming: true,
-            enableTextSelection: false,
-            canShowScrollHead: scrollDirection == ScrollDirection.continuous,
-            canShowScrollStatus: scrollDirection == ScrollDirection.continuous,
+            enableTextSelection: true,
+            canShowScrollHead: scrollDirection != ScrollDirection.horizontal,
+            canShowScrollStatus: scrollDirection != ScrollDirection.horizontal,
             canShowPaginationDialog: false,
-            pageSpacing: scrollDirection == ScrollDirection.continuous ? 4 : 0,
+            pageSpacing: scrollDirection != ScrollDirection.horizontal ? 4 : 0,
             pageLayoutMode: layoutMode,
             scrollDirection: pdfScrollDirection,
             onDocumentLoaded: (details) {
@@ -163,8 +219,35 @@ class _PdfReaderViewState extends State<PdfReaderView> {
               }
             },
             onPageChanged: (details) => _onPageChanged(details.newPageNumber),
+            onTextSelectionChanged: _onTextSelectionChanged,
+            onTap: (details) {
+              // If text is selected, show the selection menu
+              if (_hasSelection && _selectedText.isNotEmpty) {
+                _showSelectionOptions();
+              } else {
+                // Toggle controls on tap
+                widget.onTap?.call();
+              }
+            },
           );
 
-    return RepaintBoundary(child: viewer);
+    // Wrap viewer with floating action button for text selection
+    return Stack(
+      children: [
+        SizedBox.expand(child: viewer),
+        // Floating action button when text is selected
+        if (_hasSelection && _selectedText.isNotEmpty)
+          Positioned(
+            bottom: 100,
+            right: 20,
+            child: FloatingActionButton.extended(
+              onPressed: _showSelectionOptions,
+              icon: const Icon(Icons.format_quote),
+              label: const Text('Highlight'),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+      ],
+    );
   }
 }

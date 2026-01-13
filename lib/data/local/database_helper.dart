@@ -2,14 +2,13 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/reading_progress.dart';
+import '../models/reading_goal.dart';
 import '../models/book.dart';
-import '../models/bookmark.dart';
-import '../models/highlight.dart';
 
 class DatabaseHelper {
   static Database? _database;
   static const String _dbName = 'diread.db';
-  static const int _dbVersion = 1;
+  static const int _dbVersion = 2; // Upgraded for new tables
 
   /// Check if database is available (not on web)
   bool get isAvailable => !kIsWeb;
@@ -122,10 +121,81 @@ class DatabaseHelper {
       'theme': 'light',
       'scroll_mode': 0,
     });
+
+    // Reading Goals Table
+    await db.execute('''
+      CREATE TABLE reading_goals (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL,
+        target INTEGER NOT NULL,
+        current INTEGER DEFAULT 0,
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        status TEXT DEFAULT 'active'
+      )
+    ''');
+
+    // Reading Sessions Table (for time tracking)
+    await db.execute('''
+      CREATE TABLE reading_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        book_id TEXT NOT NULL,
+        start_time TEXT NOT NULL,
+        end_time TEXT,
+        pages_read INTEGER DEFAULT 0,
+        duration_seconds INTEGER DEFAULT 0
+      )
+    ''');
+
+    // Daily Stats Table (aggregated daily statistics)
+    await db.execute('''
+      CREATE TABLE daily_stats (
+        date TEXT PRIMARY KEY,
+        pages_read INTEGER DEFAULT 0,
+        minutes_read INTEGER DEFAULT 0,
+        books_opened INTEGER DEFAULT 0,
+        sessions_count INTEGER DEFAULT 0
+      )
+    ''');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     // Handle database migrations
+    if (oldVersion < 2) {
+      // Add new tables for version 2
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS reading_goals (
+          id TEXT PRIMARY KEY,
+          type TEXT NOT NULL,
+          target INTEGER NOT NULL,
+          current INTEGER DEFAULT 0,
+          start_date TEXT NOT NULL,
+          end_date TEXT NOT NULL,
+          status TEXT DEFAULT 'active'
+        )
+      ''');
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS reading_sessions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          book_id TEXT NOT NULL,
+          start_time TEXT NOT NULL,
+          end_time TEXT,
+          pages_read INTEGER DEFAULT 0,
+          duration_seconds INTEGER DEFAULT 0
+        )
+      ''');
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS daily_stats (
+          date TEXT PRIMARY KEY,
+          pages_read INTEGER DEFAULT 0,
+          minutes_read INTEGER DEFAULT 0,
+          books_opened INTEGER DEFAULT 0,
+          sessions_count INTEGER DEFAULT 0
+        )
+      ''');
+    }
   }
 
   // Reading Progress Methods
@@ -293,6 +363,200 @@ class DatabaseHelper {
     await db.update('reading_settings', settings);
   }
 
+  // Reading Goals Methods
+  Future<void> saveGoal(ReadingGoal goal) async {
+    if (kIsWeb) return;
+    final db = await database;
+    await db.insert(
+      'reading_goals',
+      goal.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List<ReadingGoal>> getActiveGoals() async {
+    if (kIsWeb) return [];
+    final db = await database;
+    final maps = await db.query(
+      'reading_goals',
+      where: 'status = ?',
+      whereArgs: ['active'],
+    );
+    return maps.map((map) => ReadingGoal.fromMap(map)).toList();
+  }
+
+  Future<ReadingGoal?> getDailyGoal() async {
+    if (kIsWeb) return null;
+    final db = await database;
+    final today = DateTime.now();
+    final startOfDay = DateTime(today.year, today.month, today.day);
+
+    final maps = await db.query(
+      'reading_goals',
+      where: 'type = ? AND start_date >= ?',
+      whereArgs: ['daily', startOfDay.toIso8601String()],
+      limit: 1,
+    );
+
+    if (maps.isEmpty) return null;
+    return ReadingGoal.fromMap(maps.first);
+  }
+
+  Future<void> updateGoalProgress(String goalId, int current) async {
+    if (kIsWeb) return;
+    final db = await database;
+    await db.update(
+      'reading_goals',
+      {'current': current},
+      where: 'id = ?',
+      whereArgs: [goalId],
+    );
+  }
+
+  Future<void> completeGoal(String goalId) async {
+    if (kIsWeb) return;
+    final db = await database;
+    await db.update(
+      'reading_goals',
+      {'status': 'completed'},
+      where: 'id = ?',
+      whereArgs: [goalId],
+    );
+  }
+
+  // Reading Sessions Methods
+  Future<int> startReadingSession(String bookId) async {
+    if (kIsWeb) return -1;
+    final db = await database;
+    return await db.insert('reading_sessions', {
+      'book_id': bookId,
+      'start_time': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<void> endReadingSession(int sessionId, int pagesRead) async {
+    if (kIsWeb) return;
+    final db = await database;
+    final now = DateTime.now();
+
+    // Get session start time
+    final maps = await db.query(
+      'reading_sessions',
+      where: 'id = ?',
+      whereArgs: [sessionId],
+    );
+
+    if (maps.isNotEmpty) {
+      final startTime = DateTime.parse(maps.first['start_time'] as String);
+      final durationSeconds = now.difference(startTime).inSeconds;
+
+      await db.update(
+        'reading_sessions',
+        {
+          'end_time': now.toIso8601String(),
+          'pages_read': pagesRead,
+          'duration_seconds': durationSeconds,
+        },
+        where: 'id = ?',
+        whereArgs: [sessionId],
+      );
+
+      // Update daily stats
+      await _updateDailyStats(pagesRead, durationSeconds ~/ 60);
+    }
+  }
+
+  Future<void> _updateDailyStats(int pagesRead, int minutesRead) async {
+    final db = await database;
+    final today = DateTime.now();
+    final dateStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+
+    // Try to get existing stats for today
+    final existing = await db.query(
+      'daily_stats',
+      where: 'date = ?',
+      whereArgs: [dateStr],
+    );
+
+    if (existing.isEmpty) {
+      await db.insert('daily_stats', {
+        'date': dateStr,
+        'pages_read': pagesRead,
+        'minutes_read': minutesRead,
+        'books_opened': 1,
+        'sessions_count': 1,
+      });
+    } else {
+      await db.rawUpdate('''
+        UPDATE daily_stats
+        SET pages_read = pages_read + ?,
+            minutes_read = minutes_read + ?,
+            sessions_count = sessions_count + 1
+        WHERE date = ?
+      ''', [pagesRead, minutesRead, dateStr]);
+    }
+  }
+
+  Future<Map<String, dynamic>?> getTodayStats() async {
+    if (kIsWeb) return null;
+    final db = await database;
+    final today = DateTime.now();
+    final dateStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+
+    final maps = await db.query(
+      'daily_stats',
+      where: 'date = ?',
+      whereArgs: [dateStr],
+    );
+
+    if (maps.isEmpty) return null;
+    return maps.first;
+  }
+
+  Future<List<Map<String, dynamic>>> getWeeklyStats() async {
+    if (kIsWeb) return [];
+    final db = await database;
+    final today = DateTime.now();
+    final weekAgo = today.subtract(const Duration(days: 7));
+    final weekAgoStr = '${weekAgo.year}-${weekAgo.month.toString().padLeft(2, '0')}-${weekAgo.day.toString().padLeft(2, '0')}';
+
+    return await db.query(
+      'daily_stats',
+      where: 'date >= ?',
+      whereArgs: [weekAgoStr],
+      orderBy: 'date ASC',
+    );
+  }
+
+  Future<int> getCurrentStreak() async {
+    if (kIsWeb) return 0;
+    final db = await database;
+    final stats = await db.query(
+      'daily_stats',
+      orderBy: 'date DESC',
+      limit: 30, // Check last 30 days
+    );
+
+    if (stats.isEmpty) return 0;
+
+    int streak = 0;
+    DateTime checkDate = DateTime.now();
+
+    for (final stat in stats) {
+      final statDate = stat['date'] as String;
+      final expectedDate = '${checkDate.year}-${checkDate.month.toString().padLeft(2, '0')}-${checkDate.day.toString().padLeft(2, '0')}';
+
+      if (statDate == expectedDate) {
+        streak++;
+        checkDate = checkDate.subtract(const Duration(days: 1));
+      } else {
+        break;
+      }
+    }
+
+    return streak;
+  }
+
   // Utility Methods
   Future<void> clearAllData() async {
     final db = await database;
@@ -300,6 +564,9 @@ class DatabaseHelper {
     await db.delete('books_cache');
     await db.delete('bookmarks_cache');
     await db.delete('highlights_cache');
+    await db.delete('reading_goals');
+    await db.delete('reading_sessions');
+    await db.delete('daily_stats');
   }
 
   Future<void> close() async {
