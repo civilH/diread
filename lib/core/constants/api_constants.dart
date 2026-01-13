@@ -32,6 +32,15 @@ class ApiConstants {
   static String updateHighlight(String id) => '/highlights/$id';
   static String deleteHighlight(String id) => '/highlights/$id';
 
+  // Notes Endpoints
+  static String notes(String bookId) => '/books/$bookId/notes';
+  static String updateNote(String id) => '/notes/$id';
+  static String deleteNote(String id) => '/notes/$id';
+
+  // Search Endpoints
+  static String searchBooks(String query) => '/books/search?q=$query';
+  static String searchInBook(String bookId, String query) => '/books/$bookId/search?q=$query';
+
   // HTTP Headers
   static const String contentType = 'Content-Type';
   static const String authorization = 'Authorization';

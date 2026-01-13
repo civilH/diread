@@ -5,6 +5,7 @@ import '../../../data/models/book.dart';
 import '../../../data/models/reading_progress.dart';
 import '../../../data/models/reading_goal.dart';
 import '../../../data/services/recommendation_service.dart';
+import '../../../core/utils/responsive.dart';
 import '../../providers/library_provider.dart';
 
 class HomeScreen extends StatefulWidget {

@@ -8,6 +8,7 @@ import '../../providers/library_provider.dart';
 import '../../widgets/book_card.dart';
 import '../../widgets/book_grid.dart';
 import '../../../core/utils/validators.dart';
+import '../../../core/utils/responsive.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
