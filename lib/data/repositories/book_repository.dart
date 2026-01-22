@@ -36,6 +36,30 @@ class BookRepository {
     return updatedBooks;
   }
 
+  Future<List<Book>> refreshMetadata() async {
+    final response = await _apiService.refreshBooksMetadata();
+    final books = response.map((json) => Book.fromJson(json)).toList();
+
+    // Skip local file check on web
+    if (kIsWeb) {
+      return books;
+    }
+
+    // Check local availability for each book
+    final updatedBooks = <Book>[];
+    for (final book in books) {
+      final localFile = await FileUtils.getLocalBook(book.id, book.fileExtension);
+      final localCover = await FileUtils.getLocalCover(book.id);
+      updatedBooks.add(book.copyWith(
+        isDownloaded: localFile != null,
+        localPath: localFile?.path,
+        localCoverPath: localCover?.path,
+      ));
+    }
+
+    return updatedBooks;
+  }
+
   Future<Book> uploadBook(File file, {String? title}) async {
     final response = await _apiService.uploadBook(file, title: title);
     return Book.fromJson(response);

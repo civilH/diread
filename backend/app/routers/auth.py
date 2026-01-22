@@ -3,10 +3,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..schemas.auth import UserCreate, UserLogin, Token, TokenRefresh, PasswordResetRequest, PasswordReset
+from ..schemas.auth import UserCreate, UserLogin, Token, TokenRefresh, PasswordResetRequest, PasswordReset, ChangePassword
 from ..schemas.user import UserResponse
 from ..services.auth_service import AuthService
 from ..services.email_service import EmailService
+from ..utils.security import get_current_user
+from ..models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -229,4 +231,42 @@ async def reset_password(
 
     return {
         "message": "Password has been reset successfully. Please log in with your new password."
+    }
+
+
+@router.post("/change-password", status_code=status.HTTP_200_OK)
+async def change_password(
+    request: ChangePassword,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Change password for authenticated user."""
+    # Validate new password length (same as registration: 8 characters minimum)
+    if len(request.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be at least 8 characters",
+        )
+
+    # Verify current password
+    if not AuthService.verify_password(request.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect",
+        )
+
+    # Check if new password is same as current
+    if request.current_password == request.new_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be different from current password",
+        )
+
+    # Update password
+    await AuthService.update_password(db, current_user, request.new_password)
+
+    logger.info(f"Password changed successfully for user: {current_user.email}")
+
+    return {
+        "message": "Password changed successfully"
     }

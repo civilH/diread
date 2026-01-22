@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../../../core/config/theme.dart';
 import '../../../data/services/epub_service.dart';
+import '../../../data/services/epub_cache_service.dart';
 import '../../providers/reader_provider.dart';
 
 class EpubReaderView extends StatefulWidget {
@@ -32,6 +33,9 @@ class _EpubReaderViewState extends State<EpubReaderView> {
   bool _isLoading = true;
   String? _error;
   int _currentChapterIndex = 0;
+  double _scrollProgress = 0.0; // 0.0 to 1.0 for smooth slider tracking
+  bool _isScrollingProgrammatically = false;
+  int _lastReportedPage = -1; // Track last reported page to avoid duplicate updates
 
   final ItemScrollController _scrollController = ItemScrollController();
   final ItemPositionsListener _positionsListener = ItemPositionsListener.create();
@@ -43,39 +47,104 @@ class _EpubReaderViewState extends State<EpubReaderView> {
     _setupPositionListener();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Listen for external page changes (from slider)
+    final reader = context.read<ReaderProvider>();
+    reader.addListener(_onProviderPageChanged);
+  }
+
+  void _onProviderPageChanged() {
+    if (_book == null || _isScrollingProgrammatically) return;
+
+    final reader = context.read<ReaderProvider>();
+    final targetVirtualPage = reader.currentPage;
+    final totalVirtualPages = _book!.totalChapters * _pagesPerChapter;
+
+    // Only scroll if the page changed externally (not from our own scroll)
+    if (targetVirtualPage != _lastReportedPage && targetVirtualPage >= 0 && targetVirtualPage < totalVirtualPages) {
+      _scrollToVirtualPage(targetVirtualPage);
+      _lastReportedPage = targetVirtualPage;
+    }
+  }
+
   void _setupPositionListener() {
     _positionsListener.itemPositions.addListener(_onPositionChanged);
   }
 
+  // Granularity multiplier: creates more virtual "pages" per chapter for smoother slider
+  static const int _pagesPerChapter = 10;
+
   void _onPositionChanged() {
-    if (_book == null) return;
+    if (_book == null || _isScrollingProgrammatically) return;
 
     final positions = _positionsListener.itemPositions.value;
     if (positions.isEmpty) return;
 
-    // Find the most visible item
-    final visible = positions.toList()
-      ..sort((a, b) {
-        final aVisible = a.itemTrailingEdge - a.itemLeadingEdge;
-        final bVisible = b.itemTrailingEdge - b.itemLeadingEdge;
-        return bVisible.compareTo(aVisible);
-      });
+    final totalChapters = _book!.totalChapters;
+    if (totalChapters == 0) return;
 
-    final topItem = visible.first;
+    // Find the topmost visible item (the one closest to viewport top)
+    final sortedPositions = positions.toList()
+      ..sort((a, b) => a.itemLeadingEdge.compareTo(b.itemLeadingEdge));
 
-    if (topItem.index != _currentChapterIndex) {
-      setState(() {
-        _currentChapterIndex = topItem.index;
-      });
-
-      // Update reader provider
-      final reader = context.read<ReaderProvider>();
-      reader.updatePage(_currentChapterIndex);
-
-      // Calculate progress
-      final progress = (_currentChapterIndex + 1) / _book!.totalChapters;
-      reader.updateProgress(progress);
+    // Get the first item that's at least partially visible
+    ItemPosition? topItem;
+    for (final pos in sortedPositions) {
+      if (pos.itemTrailingEdge > 0) {
+        topItem = pos;
+        break;
+      }
     }
+
+    if (topItem == null) return;
+
+    final chapterIndex = topItem.index;
+
+    // Calculate precise scroll progress within the chapter
+    // itemLeadingEdge/itemTrailingEdge are in viewport units
+    // For a chapter 3 viewports tall at top: leading=0, trailing=3
+    // When scrolled to bottom: leading=-2, trailing=1
+    //
+    // Progress formula:
+    // - itemHeight = trailing - leading (total chapter height in viewports)
+    // - scrolledAmount = -leading (how much of chapter is above viewport)
+    // - scrollableHeight = itemHeight - 1 (total scrollable distance)
+    // - progress = scrolledAmount / scrollableHeight
+
+    final itemHeight = topItem.itemTrailingEdge - topItem.itemLeadingEdge;
+    final scrollableHeight = itemHeight - 1.0; // Minus one viewport
+    final scrolledAmount = -topItem.itemLeadingEdge;
+
+    double chapterProgress;
+    if (scrollableHeight > 0.01) {
+      // Chapter is taller than viewport - calculate scroll progress
+      chapterProgress = (scrolledAmount / scrollableHeight).clamp(0.0, 1.0);
+    } else {
+      // Chapter fits in viewport - consider it fully visible based on position
+      chapterProgress = topItem.itemLeadingEdge <= 0 ? 1.0 : 0.0;
+    }
+
+    // Calculate overall progress as: (chapterIndex + progressWithinChapter) / totalChapters
+    final overallProgress = (chapterIndex + chapterProgress) / totalChapters;
+    _scrollProgress = overallProgress.clamp(0.0, 1.0);
+
+    // Update chapter index
+    _currentChapterIndex = chapterIndex;
+
+    // Calculate virtual page with increased granularity
+    // Each chapter has _pagesPerChapter virtual pages for smoother slider movement
+    final totalVirtualPages = totalChapters * _pagesPerChapter;
+    final virtualPage = (_scrollProgress * totalVirtualPages).floor().clamp(0, totalVirtualPages - 1);
+
+    // Update provider - always update to keep slider in sync
+    final reader = context.read<ReaderProvider>();
+    if (virtualPage != _lastReportedPage) {
+      _lastReportedPage = virtualPage;
+      reader.updatePage(virtualPage);
+    }
+    reader.updateProgress(_scrollProgress);
   }
 
   Future<void> _loadEpub() async {
@@ -85,13 +154,24 @@ class _EpubReaderViewState extends State<EpubReaderView> {
         _error = null;
       });
 
+      // Get book ID for caching
+      final reader = context.read<ReaderProvider>();
+      final bookId = reader.currentBook?.id ?? '';
+
       EpubBook book;
-      if (widget.bytes != null) {
-        book = await EpubService.parse(widget.bytes!);
-      } else if (widget.file != null) {
-        book = await EpubService.parseFromFile(widget.file!);
+
+      // Try to load from cache first
+      if (bookId.isNotEmpty && await EpubCacheService.hasValidCache(bookId)) {
+        final cachedBook = await EpubCacheService.loadFromCache(bookId);
+        if (cachedBook != null) {
+          book = cachedBook;
+        } else {
+          // Cache was invalid, parse fresh
+          book = await _parseAndCacheEpub(bookId);
+        }
       } else {
-        throw Exception('No EPUB file provided');
+        // No cache, parse and cache for future use
+        book = await _parseAndCacheEpub(bookId);
       }
 
       if (mounted) {
@@ -100,18 +180,18 @@ class _EpubReaderViewState extends State<EpubReaderView> {
           _isLoading = false;
         });
 
-        // Update reader provider with book info
-        final reader = context.read<ReaderProvider>();
-        reader.setTotalPages(book.totalChapters);
+        // Update reader provider with virtual page count for smoother slider
+        final totalVirtualPages = book.totalChapters * _pagesPerChapter;
+        reader.setTotalPages(totalVirtualPages);
         reader.setTableOfContents(
           book.tableOfContents.map((t) => t.toMap()).toList(),
         );
 
-        // Restore reading position
+        // Restore reading position (convert virtual page to chapter)
         final savedPage = reader.currentPage;
-        if (savedPage > 0 && savedPage < book.totalChapters) {
+        if (savedPage > 0 && savedPage < totalVirtualPages) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            _scrollToChapter(savedPage);
+            _scrollToVirtualPage(savedPage);
           });
         }
       }
@@ -125,18 +205,72 @@ class _EpubReaderViewState extends State<EpubReaderView> {
     }
   }
 
+  Future<EpubBook> _parseAndCacheEpub(String bookId) async {
+    Uint8List bytes;
+    if (widget.bytes != null) {
+      bytes = widget.bytes!;
+    } else if (widget.file != null) {
+      bytes = await widget.file!.readAsBytes();
+    } else {
+      throw Exception('No EPUB file provided');
+    }
+
+    // Parse and cache for future use
+    if (bookId.isNotEmpty) {
+      return await EpubCacheService.parseAndCache(bytes, bookId);
+    } else {
+      return await EpubService.parse(bytes);
+    }
+  }
+
   void _scrollToChapter(int index) {
     if (_scrollController.isAttached && index < (_book?.totalChapters ?? 0)) {
+      _isScrollingProgrammatically = true;
+      _currentChapterIndex = index;
       _scrollController.scrollTo(
         index: index,
         duration: const Duration(milliseconds: 300),
-      );
+      ).then((_) {
+        _isScrollingProgrammatically = false;
+      });
     }
+  }
+
+  void _scrollToVirtualPage(int virtualPage) {
+    if (_book == null || !_scrollController.isAttached) return;
+
+    final totalChapters = _book!.totalChapters;
+    if (totalChapters == 0) return;
+
+    // Convert virtual page to chapter index and alignment
+    // virtualPage / _pagesPerChapter = chapter + fraction
+    final chapterIndex = virtualPage ~/ _pagesPerChapter;
+    final positionInChapter = (virtualPage % _pagesPerChapter) / _pagesPerChapter;
+
+    // Clamp to valid range
+    final targetChapter = chapterIndex.clamp(0, totalChapters - 1);
+
+    _isScrollingProgrammatically = true;
+    _currentChapterIndex = targetChapter;
+
+    // Scroll to chapter with alignment based on position within virtual page range
+    // alignment: 0 = item top at viewport top, negative = scrolled down into item
+    _scrollController.scrollTo(
+      index: targetChapter,
+      alignment: -positionInChapter, // Negative to scroll down into the chapter
+      duration: const Duration(milliseconds: 300),
+    ).then((_) {
+      _isScrollingProgrammatically = false;
+    });
   }
 
   @override
   void dispose() {
     _positionsListener.itemPositions.removeListener(_onPositionChanged);
+    // Remove provider listener
+    try {
+      context.read<ReaderProvider>().removeListener(_onProviderPageChanged);
+    } catch (_) {}
     super.dispose();
   }
 

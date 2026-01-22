@@ -6,6 +6,7 @@ class ApiConstants {
   static const String logout = '/auth/logout';
   static const String forgotPassword = '/auth/forgot-password';
   static const String resetPassword = '/auth/reset-password';
+  static const String changePassword = '/auth/change-password';
 
   // User Endpoints
   static const String userProfile = '/users/me';
@@ -15,6 +16,7 @@ class ApiConstants {
   // Books Endpoints
   static const String books = '/books';
   static const String uploadBook = '/books/upload';
+  static const String refreshMetadata = '/books/refresh-metadata';
   static String bookDetail(String id) => '/books/$id';
   static String deleteBook(String id) => '/books/$id';
   static String downloadBook(String id) => '/books/$id/download';

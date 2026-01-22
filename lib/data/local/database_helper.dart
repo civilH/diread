@@ -8,7 +8,7 @@ import '../models/book.dart';
 class DatabaseHelper {
   static Database? _database;
   static const String _dbName = 'diread.db';
-  static const int _dbVersion = 2; // Upgraded for new tables
+  static const int _dbVersion = 3; // Added scroll_direction column
 
   /// Check if database is available (not on web)
   bool get isAvailable => !kIsWeb;
@@ -108,7 +108,8 @@ class DatabaseHelper {
         line_height REAL DEFAULT 1.6,
         margin REAL DEFAULT 16.0,
         theme TEXT DEFAULT 'light',
-        scroll_mode INTEGER DEFAULT 0
+        scroll_mode INTEGER DEFAULT 0,
+        scroll_direction TEXT DEFAULT 'horizontal'
       )
     ''');
 
@@ -120,6 +121,7 @@ class DatabaseHelper {
       'margin': 16.0,
       'theme': 'light',
       'scroll_mode': 0,
+      'scroll_direction': 'horizontal',
     });
 
     // Reading Goals Table
@@ -194,6 +196,13 @@ class DatabaseHelper {
           books_opened INTEGER DEFAULT 0,
           sessions_count INTEGER DEFAULT 0
         )
+      ''');
+    }
+
+    if (oldVersion < 3) {
+      // Add scroll_direction column to reading_settings
+      await db.execute('''
+        ALTER TABLE reading_settings ADD COLUMN scroll_direction TEXT DEFAULT 'horizontal'
       ''');
     }
   }

@@ -5,7 +5,6 @@ import '../../../data/models/book.dart';
 import '../../../data/models/reading_progress.dart';
 import '../../../data/models/reading_goal.dart';
 import '../../../data/services/recommendation_service.dart';
-import '../../../core/utils/responsive.dart';
 import '../../providers/library_provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -124,16 +123,6 @@ class _HomeScreenState extends State<HomeScreen> {
               SliverAppBar(
                 floating: true,
                 title: const Text('diRead'),
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.search),
-                    onPressed: () => context.go('/library'),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.person_outline),
-                    onPressed: () => context.push('/profile'),
-                  ),
-                ],
               ),
 
               // Greeting and Stats Overview

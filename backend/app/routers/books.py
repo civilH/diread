@@ -67,6 +67,16 @@ async def delete_book(
     return None
 
 
+@router.post("/refresh-metadata", response_model=List[BookResponse])
+async def refresh_all_metadata(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Refresh metadata (page count, etc.) for all books."""
+    books = await BookService.refresh_all_metadata(db, current_user.id)
+    return [BookResponse.model_validate(book) for book in books]
+
+
 @router.get("/{book_id}/download")
 async def download_book(
     book_id: str,

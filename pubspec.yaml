@@ -57,6 +57,7 @@ dependencies:
   json_annotation: ^4.8.1
   connectivity_plus: ^5.0.2
   share_plus: ^7.2.1
+  crypto: ^3.0.3
 
 dev_dependencies:
   flutter_test:

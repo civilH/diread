@@ -101,25 +101,47 @@ class BookCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        _BookTag(
-                          text: book.fileType == BookType.pdf ? 'PDF' : 'EPUB',
+                        Expanded(
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              _BookTag(
+                                text: book.fileType == BookType.pdf ? 'PDF' : 'EPUB',
+                              ),
+                              if (book.totalPages != null && book.totalPages! > 0)
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.menu_book, size: 14, color: Colors.grey.shade600),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      '${book.totalPages}p',
+                                      style: Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                  ],
+                                ),
+                              if (book.fileSize != null)
+                                Text(
+                                  book.fileSizeFormatted,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              if (book.readingTimeShort.isNotEmpty)
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.schedule, size: 14, color: Colors.grey.shade600),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      book.readingTimeShort,
+                                      style: Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(width: 8),
-                        if (book.fileSize != null)
-                          Text(
-                            book.fileSizeFormatted,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        if (book.readingTimeShort.isNotEmpty) ...[
-                          const SizedBox(width: 8),
-                          Icon(Icons.schedule, size: 14, color: Colors.grey.shade600),
-                          const SizedBox(width: 2),
-                          Text(
-                            book.readingTimeShort,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                        const Spacer(),
                         if (book.isDownloaded)
                           const Icon(
                             Icons.download_done,

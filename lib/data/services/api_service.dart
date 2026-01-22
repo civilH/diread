@@ -182,6 +182,23 @@ class ApiService {
     }
   }
 
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      await _dio.post(
+        ApiConstants.changePassword,
+        data: {
+          'current_password': currentPassword,
+          'new_password': newPassword,
+        },
+      );
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   // User Methods
   Future<Map<String, dynamic>> getCurrentUser() async {
     try {
@@ -212,6 +229,15 @@ class ApiService {
   Future<List<dynamic>> getBooks() async {
     try {
       final response = await _dio.get(ApiConstants.books);
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<List<dynamic>> refreshBooksMetadata() async {
+    try {
+      final response = await _dio.post(ApiConstants.refreshMetadata);
       return response.data;
     } on DioException catch (e) {
       throw _handleError(e);

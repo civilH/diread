@@ -67,6 +67,16 @@ class AuthRepository {
     );
   }
 
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _apiService.changePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+  }
+
   Future<User> getCurrentUser() async {
     final response = await _apiService.getCurrentUser();
     return User.fromJson(response);

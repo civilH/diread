@@ -6,9 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../providers/library_provider.dart';
 import '../../widgets/book_card.dart';
-import '../../widgets/book_grid.dart';
 import '../../../core/utils/validators.dart';
-import '../../../core/utils/responsive.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -18,7 +16,6 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
-  bool _isGridView = true;
   bool _isSearching = false;
   final _searchController = TextEditingController();
 
@@ -204,16 +201,37 @@ class _LibraryScreenState extends State<LibraryScreen> {
               onPressed: _toggleSearch,
             ),
             IconButton(
-              icon: Icon(_isGridView ? Icons.view_list : Icons.grid_view),
-              onPressed: () {
-                setState(() {
-                  _isGridView = !_isGridView;
-                });
-              },
-            ),
-            IconButton(
               icon: const Icon(Icons.sort),
               onPressed: _showSortOptions,
+            ),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (value) async {
+                if (value == 'refresh_metadata') {
+                  final libraryProvider = context.read<LibraryProvider>();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Refreshing book metadata...')),
+                  );
+                  await libraryProvider.refreshMetadata();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Metadata refreshed!')),
+                    );
+                  }
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'refresh_metadata',
+                  child: Row(
+                    children: [
+                      Icon(Icons.refresh),
+                      SizedBox(width: 8),
+                      Text('Refresh Page Counts'),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ] else ...[
             IconButton(
@@ -270,14 +288,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
           return RefreshIndicator(
             onRefresh: () => library.refresh(),
-            child: _isGridView
-                ? BookGrid(
-                    books: library.books,
-                    onBookTap: (book) => context.push('/reader/${book.id}'),
-                    onBookLongPress: (book) =>
-                        context.push('/book/${book.id}'),
-                  )
-                : _buildListView(library),
+            child: _buildListView(library),
           );
         },
       ),

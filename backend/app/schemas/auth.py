@@ -30,3 +30,8 @@ class PasswordResetRequest(BaseModel):
 class PasswordReset(BaseModel):
     token: str
     password: str
+
+
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str

@@ -207,10 +207,8 @@ class ReaderProvider with ChangeNotifier {
   Future<void> updatePage(int page, {bool fromNavButton = false}) async {
     if (_currentPage == page) return;
     _currentPage = page;
-    // Notify listeners when from navigation button so PDF viewer can update
-    if (fromNavButton) {
-      notifyListeners();
-    }
+    // Always notify listeners for responsive UI updates
+    notifyListeners();
     _debouncedSaveProgress();
   }
 
@@ -295,12 +293,25 @@ class ReaderProvider with ChangeNotifier {
   }
 
   Future<void> goToChapter(Map<String, dynamic> chapter) async {
+    // For EPUB with chapter index, convert to virtual page
+    if (chapter['index'] != null) {
+      final chapterIndex = chapter['index'] as int;
+      final totalChapters = _tableOfContents.length;
+
+      if (totalChapters > 0 && _totalPages > 0) {
+        // Calculate virtual page for this chapter (10 virtual pages per chapter)
+        final pagesPerChapter = _totalPages ~/ totalChapters;
+        _currentPage = chapterIndex * pagesPerChapter;
+      } else {
+        _currentPage = chapterIndex;
+      }
+    }
     // For EPUB, use CFI if available
-    if (chapter['cfi'] != null) {
+    else if (chapter['cfi'] != null) {
       _currentCfi = chapter['cfi'];
     }
     // For PDF or EPUB with page number
-    if (chapter['page'] != null) {
+    else if (chapter['page'] != null) {
       _currentPage = chapter['page'] as int;
     }
     notifyListeners();

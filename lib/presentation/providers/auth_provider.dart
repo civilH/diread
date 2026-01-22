@@ -195,6 +195,40 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _authRepository.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+      return true;
+    } on ValidationException catch (e) {
+      _errorMessage = e.message;
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+      return false;
+    } on UnauthorizedException {
+      _errorMessage = 'Current password is incorrect';
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Failed to change password. Please try again.';
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+      return false;
+    }
+  }
+
   void clearError() {
     _errorMessage = null;
     if (_status == AuthStatus.error) {

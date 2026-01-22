@@ -137,6 +137,27 @@ class LibraryProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> refreshMetadata() async {
+    _status = LibraryStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _books = await _bookRepository.refreshMetadata();
+      // Cache books locally (skip on web - no SQLite support)
+      if (!kIsWeb) {
+        for (final book in _books) {
+          await _dbHelper.cacheBook(book);
+        }
+      }
+      _status = LibraryStatus.loaded;
+    } catch (e) {
+      _errorMessage = 'Failed to refresh metadata: $e';
+      _status = LibraryStatus.error;
+    }
+    notifyListeners();
+  }
+
   Future<Book?> uploadBook(File file, {String? title}) async {
     _status = LibraryStatus.uploading;
     _uploadProgress = 0.0;

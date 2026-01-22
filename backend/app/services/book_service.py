@@ -59,7 +59,7 @@ class BookService:
                 metadata["total_pages"] = len(pdf.pages)
 
             elif file_type == BookType.EPUB:
-                from ebooklib import epub
+                from ebooklib import epub, ITEM_DOCUMENT
                 book = epub.read_epub(io.BytesIO(file_content))
                 title = book.get_metadata("DC", "title")
                 if title:
@@ -67,6 +67,10 @@ class BookService:
                 creator = book.get_metadata("DC", "creator")
                 if creator:
                     metadata["author"] = creator[0][0]
+
+                # Count chapters (spine items) as pages
+                spine_items = [item for item in book.get_items() if item.get_type() == ITEM_DOCUMENT]
+                metadata["total_pages"] = len(spine_items) if spine_items else len(list(book.get_items_of_type(ITEM_DOCUMENT)))
 
                 # Get cover image
                 for item in book.get_items():
@@ -147,6 +151,35 @@ class BookService:
             select(Book).where(Book.user_id == user_id).order_by(Book.created_at.desc())
         )
         return list(result.scalars().all())
+
+    @staticmethod
+    async def refresh_all_metadata(db: AsyncSession, user_id: str) -> List[Book]:
+        """Refresh metadata (page count, etc.) for all books of a user."""
+        books = await BookService.get_user_books(db, user_id)
+
+        for book in books:
+            try:
+                # Get the book content
+                content = await storage_service.get_book(book.file_url)
+                if content:
+                    # Re-extract metadata
+                    metadata = await BookService.extract_metadata(content, book.file_type)
+
+                    # Update book with new metadata
+                    if metadata.get("total_pages"):
+                        book.total_pages = metadata["total_pages"]
+                    if metadata.get("author") and not book.author:
+                        book.author = metadata["author"]
+            except Exception:
+                pass  # Skip books that fail to process
+
+        await db.commit()
+
+        # Refresh all books to get updated data
+        for book in books:
+            await db.refresh(book)
+
+        return books
 
     @staticmethod
     async def get_book(db: AsyncSession, book_id: str, user_id: str) -> Optional[Book]:

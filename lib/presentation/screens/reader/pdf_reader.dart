@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:typed_data';
-import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -28,7 +27,6 @@ class PdfReaderView extends StatefulWidget {
 
 class _PdfReaderViewState extends State<PdfReaderView> {
   PdfViewerController? _pdfController;
-  Timer? _pageUpdateDebounce;
   int _lastKnownPage = 0;
   ScrollDirection? _lastScrollDirection;
   String _selectedText = '';
@@ -42,7 +40,6 @@ class _PdfReaderViewState extends State<PdfReaderView> {
 
   @override
   void dispose() {
-    _pageUpdateDebounce?.cancel();
     _pdfController?.dispose();
     super.dispose();
   }
@@ -56,13 +53,10 @@ class _PdfReaderViewState extends State<PdfReaderView> {
 
   void _onPageChanged(int pageNumber) {
     _lastKnownPage = pageNumber - 1;
-    // Debounce page updates to reduce rebuilds (300ms for smoother scrolling)
-    _pageUpdateDebounce?.cancel();
-    _pageUpdateDebounce = Timer(const Duration(milliseconds: 300), () {
-      if (mounted) {
-        context.read<ReaderProvider>().updatePage(pageNumber - 1);
-      }
-    });
+    // Immediate update for responsive slider/page sync
+    if (mounted) {
+      context.read<ReaderProvider>().updatePage(pageNumber - 1);
+    }
   }
 
   void _onTextSelectionChanged(PdfTextSelectionChangedDetails? details) {

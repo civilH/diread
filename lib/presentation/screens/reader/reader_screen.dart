@@ -68,52 +68,116 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Bookmarks',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 16),
-            if (reader.bookmarks.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(
-                  child: Text('No bookmarks yet'),
-                ),
-              )
-            else
-              Expanded(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: reader.bookmarks.length,
-                  itemBuilder: (context, index) {
-                    final bookmark = reader.bookmarks[index];
-                    return ListTile(
-                      leading: const Icon(Icons.bookmark),
-                      title: Text(bookmark.displayTitle),
-                      subtitle: bookmark.createdAt != null
-                          ? Text(
-                              _formatDate(bookmark.createdAt!),
-                              style: Theme.of(context).textTheme.bodySmall,
-                            )
-                          : null,
-                      onTap: () {
-                        Navigator.pop(context);
-                        reader.goToBookmark(bookmark);
-                      },
-                    );
-                  },
+      builder: (sheetContext) => DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        maxChildSize: 0.9,
+        minChildSize: 0.3,
+        expand: false,
+        builder: (context, scrollController) => Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-          ],
+              Row(
+                children: [
+                  const Icon(Icons.bookmarks, color: Colors.amber),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Bookmarks',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${reader.bookmarks.length} saved',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (reader.bookmarks.isEmpty)
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.bookmark_border, size: 64, color: Colors.grey.shade300),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No bookmarks yet',
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Tap the bookmark button to save your place',
+                          style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: ListView.separated(
+                    controller: scrollController,
+                    itemCount: reader.bookmarks.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final bookmark = reader.bookmarks[index];
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.bookmark, color: Colors.amber),
+                        ),
+                        title: Text(
+                          bookmark.displayTitle,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        subtitle: bookmark.createdAt != null
+                            ? Text(
+                                _formatDate(bookmark.createdAt!),
+                                style: Theme.of(context).textTheme.bodySmall,
+                              )
+                            : null,
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          reader.goToBookmark(bookmark);
+                          // Show feedback
+                          ScaffoldMessenger.of(this.context).clearSnackBars();
+                          ScaffoldMessenger.of(this.context).showSnackBar(
+                            SnackBar(
+                              content: Text('Going to ${bookmark.displayTitle}'),
+                              duration: const Duration(seconds: 1),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -135,7 +199,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (context) => DraggableScrollableSheet(
+      builder: (sheetContext) => DraggableScrollableSheet(
         initialChildSize: 0.7,
         maxChildSize: 0.9,
         minChildSize: 0.3,
@@ -145,22 +209,83 @@ class _ReaderScreenState extends State<ReaderScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Table of Contents',
-                style: Theme.of(context).textTheme.titleLarge,
+              // Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  const Icon(Icons.menu_book, color: Colors.blue),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Table of Contents',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${reader.tableOfContents.length} chapters',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               Expanded(
-                child: ListView.builder(
+                child: ListView.separated(
                   controller: scrollController,
                   itemCount: reader.tableOfContents.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final item = reader.tableOfContents[index];
+                    final isCurrentChapter = _isCurrentChapter(reader, index);
                     return ListTile(
-                      title: Text(item['title'] ?? 'Chapter ${index + 1}'),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      leading: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: isCurrentChapter ? Colors.blue : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${index + 1}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: isCurrentChapter ? Colors.white : Colors.grey.shade600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      title: Text(
+                        item['title'] ?? 'Chapter ${index + 1}',
+                        style: TextStyle(
+                          fontWeight: isCurrentChapter ? FontWeight.bold : FontWeight.normal,
+                          color: isCurrentChapter ? Colors.blue : null,
+                        ),
+                      ),
+                      trailing: isCurrentChapter
+                          ? const Icon(Icons.play_arrow, color: Colors.blue)
+                          : const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
                       onTap: () {
-                        Navigator.pop(context);
-                        reader.goToChapter(item);
+                        Navigator.pop(sheetContext);
+                        // Pass chapter index for EPUB
+                        reader.goToChapter({...item, 'index': index});
+                        // Show feedback
+                        ScaffoldMessenger.of(this.context).clearSnackBars();
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          SnackBar(
+                            content: Text('Going to ${item['title'] ?? 'Chapter ${index + 1}'}'),
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
                       },
                     );
                   },
@@ -171,6 +296,21 @@ class _ReaderScreenState extends State<ReaderScreen> {
         ),
       ),
     );
+  }
+
+  bool _isCurrentChapter(ReaderProvider reader, int chapterIndex) {
+    // For EPUB with virtual pages, calculate which chapter we're in
+    final currentPage = reader.currentPage;
+    final totalPages = reader.totalPages;
+    final totalChapters = reader.tableOfContents.length;
+
+    if (totalChapters == 0 || totalPages == 0) return false;
+
+    // Calculate pages per chapter (virtual pages / chapters)
+    final pagesPerChapter = totalPages / totalChapters;
+    final currentChapter = (currentPage / pagesPerChapter).floor();
+
+    return currentChapter == chapterIndex;
   }
 
   String _formatDate(DateTime date) {
@@ -653,12 +793,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.list, color: Colors.white),
-                tooltip: 'Table of Contents',
+                icon: const Icon(Icons.menu_book, color: Colors.white),
+                tooltip: 'Contents',
                 onPressed: _showTableOfContents,
               ),
               IconButton(
-                icon: const Icon(Icons.bookmark_border, color: Colors.white),
+                icon: const Icon(Icons.bookmarks_outlined, color: Colors.white),
                 tooltip: 'Bookmarks',
                 onPressed: _showBookmarks,
               ),
@@ -816,49 +956,39 @@ class _ReaderScreenState extends State<ReaderScreen> {
                     ],
                   ),
 
-                  // Controls
+                  // Controls - cleaner layout
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      // Bookmark toggle button
-                      IconButton(
-                        icon: Icon(
-                          isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                          color: isBookmarked ? Colors.red : Colors.white,
-                          size: 28,
-                        ),
-                        tooltip: isBookmarked ? 'Remove Bookmark' : 'Add Bookmark',
-                        onPressed: () {
-                          readerState.toggleBookmark();
+                      // Bookmark button with visual feedback
+                      _buildControlButton(
+                        icon: isBookmarked ? Icons.bookmark : Icons.bookmark_add_outlined,
+                        label: isBookmarked ? 'Saved' : 'Bookmark',
+                        color: isBookmarked ? Colors.amber : Colors.white,
+                        onTap: () async {
+                          await readerState.toggleBookmark();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).clearSnackBars();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(isBookmarked ? 'Bookmark removed' : 'Bookmark added'),
+                                duration: const Duration(seconds: 1),
+                              ),
+                            );
+                          }
                         },
                       ),
                       // Go to page button
-                      IconButton(
-                        icon: const Icon(Icons.format_list_numbered, color: Colors.white, size: 28),
-                        tooltip: 'Go to Page',
-                        onPressed: () => _showGoToPageDialog(context, readerState),
+                      _buildControlButton(
+                        icon: Icons.my_location,
+                        label: 'Go to',
+                        onTap: () => _showGoToPageDialog(context, readerState),
                       ),
-                      // Settings button (gear icon)
-                      IconButton(
-                        icon: const Icon(Icons.settings, color: Colors.white, size: 28),
-                        tooltip: 'Reading Settings',
-                        onPressed: _showSettings,
-                      ),
-                      // Scroll direction quick toggle
-                      IconButton(
-                        icon: Icon(
-                          readerState.settings.scrollDirection.icon,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                        tooltip: 'Scroll: ${readerState.settings.scrollDirection.displayName}',
-                        onPressed: () {
-                          // Cycle through scroll directions
-                          final directions = ScrollDirection.values;
-                          final currentIndex = directions.indexOf(readerState.settings.scrollDirection);
-                          final nextIndex = (currentIndex + 1) % directions.length;
-                          readerState.updateScrollDirection(directions[nextIndex]);
-                        },
+                      // Settings button
+                      _buildControlButton(
+                        icon: Icons.tune,
+                        label: 'Settings',
+                        onTap: _showSettings,
                       ),
                     ],
                   ),
@@ -922,6 +1052,32 @@ class _ReaderScreenState extends State<ReaderScreen> {
             child: const Text('Go'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildControlButton({
+    required IconData icon,
+    required String label,
+    Color color = Colors.white,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 26),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(color: color, fontSize: 11),
+            ),
+          ],
+        ),
       ),
     );
   }

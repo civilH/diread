@@ -101,7 +101,7 @@ class Book extends Equatable {
 
   /// Estimated reading time based on average reading speed
   /// Assumes ~250 words per page for PDFs, ~300 words per page for EPUBs
-  /// Average reading speed: 200-250 words per minute
+  /// Average reading speed: 200 words per minute
   String get estimatedReadingTime {
     if (totalPages == null || totalPages == 0) return '';
 
@@ -109,8 +109,8 @@ class Book extends Equatable {
     final wordsPerPage = fileType == BookType.pdf ? 250 : 300;
     final totalWords = totalPages! * wordsPerPage;
 
-    // Average reading speed: 225 words per minute
-    final minutes = totalWords / 225;
+    // Average reading speed: 200 words per minute
+    final minutes = totalWords / 200;
 
     if (minutes < 60) {
       return '${minutes.round()} min';
@@ -130,7 +130,7 @@ class Book extends Equatable {
     if (totalPages == null || totalPages == 0) return '';
     final wordsPerPage = fileType == BookType.pdf ? 250 : 300;
     final totalWords = totalPages! * wordsPerPage;
-    final minutes = totalWords / 225;
+    final minutes = totalWords / 200;
 
     if (minutes < 60) {
       return '${minutes.round()}m';
